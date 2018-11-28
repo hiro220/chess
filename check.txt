@@ -1,0 +1,326 @@
+/* check.h */
+typedef struct mas MAS;
+
+void check(MAS board[], int fl);
+void pawn_check(int p);
+void rook_check(int p);
+void knight_check(int p);
+void bishop_check(int p);
+void queen_check(int p);
+void king_check(int p);
+void str_check(int p, int dx, int dy, int cmac, int ymax);
+int check_color(int frame);
+void free_check();
+int casling(int p, int qk);
+void set_check(int set_p, int p);
+
+
+
+
+/* check.c */
+
+#include<ncurses.h>
+#include<unistd.h>
+#include<string.h>
+#include<stdlib.h>
+#include "chess.h"
+#include "check.h"
+
+extern int b[6];
+extern int w[6];
+extern int turn;
+int flag;
+MAS *bd;
+
+void check(MAS board[], int fl){
+  int i = 0;
+  int piece;
+  MAS *tmp;
+  bd = board;
+  flag = fl;
+  
+  free_check();
+  reverse_board(bd);
+  for (tmp = board; tmp < board + 64; tmp++){
+    piece = tmp->frame.piece;
+    if (turn == 1){
+      if (piece == b[0]){
+	pawn_check(i);
+      }else if (piece == b[1]){
+      	rook_check(i);
+      }else if (piece == b[2]){
+	knight_check(i);
+      }else if (piece == b[3]){
+	bishop_check(i);
+      }else if (piece == b[4]){
+	queen_check(i);
+      }else if (piece == b[5]){
+	king_check(i);
+      }
+    }else if (turn == 2){
+      if (piece == w[0]){
+	pawn_check(i);
+      }else if (piece == w[1]){
+       	rook_check(i);
+      }else if (piece == w[2]){
+	knight_check(i);
+      }else if (piece == w[3]){
+	bishop_check(i);
+      }else if (piece == w[4]){
+	queen_check(i);
+      }else if (piece == w[5]){
+	king_check(i); 
+      }
+    }
+    i++;
+  }
+  return;
+}
+
+int en_passant(int p, MAS tmp){ // アンパッサン可能か
+  int x, y, nx, ny;
+  if (tmp.frame.piece != b[0] && tmp.frame.piece != w[0]){
+    // 一手前に動かされた駒がポーンでない
+    return 0;
+  }
+  if ((tmp.check[0] - tmp.check[1]) / 8 != 2){
+    return 0;
+  }
+  x = p % 8; y = p / 8;
+  nx = WSIZE - 1 - tmp.check[1] % 8;
+  ny = HSIZE - 1 - tmp.check[1] / 8;
+  if (y == ny && (x - nx == 1 || nx - x == 1)){
+    return 1;
+  }else{
+    return 0;
+  }
+}
+
+void pawn_check(int p){
+  int turn;
+  int d;
+  int x, y, dy = -1, x1, y1,p1;
+  int  ymax;
+  turn = check_color(bd[p].frame.piece);
+  if (flag == 1){
+    // キャスリングのとき
+    x = p % 8 + 1;
+    y = p / 8 - 1;
+    if (x >= 0 && x < WSIZE && y >= 0 && y < HSIZE){
+      set_check(x+y*8, p); 
+      x-=2;
+      if (x >= 0){
+        set_check(x+y*8, p);
+      }
+    }
+    return;
+  }
+  x = p % 8;
+  y = p / 8 + dy;
+  while (1){
+    d = x + y*8;
+    if (bd[p].frame.moved == 0){
+      ymax = dy*2;
+    }else{
+      ymax = dy;
+    }
+    if (en_passant(p, bd[64])==1){
+      refresh();
+      x1 = WSIZE - 1 - (bd[64].check[1]%8); y1 = WSIZE-1-(bd[64].check[1]/8)-1;
+      p1 = x1 + y1*8;
+      set_check(p1, p);
+    }
+    x1 = p % 8 - 1; y1 = p / 8 - 1;
+    if ((y1 >= 0 && x1 >= 0) && (turn%2)+1 == check_color(bd[x1+y1*8].frame.piece)){
+      // 左上に相手の駒がある
+      set_check(x1+y1*8, p);
+    }
+    x1 = p % 8 + 1; y1 = p / 8 - 1;
+    if ((y1 >= 0 && x1 < 8) && (turn%2)+1 == check_color(bd[x1+y1*8].frame.piece)){
+      // 右上に相手の駒がある
+      set_check(x1+y1*8, p);
+    }
+    if (d >= 64 || d < 0 || turn == check_color(bd[d].frame.piece) || (turn%2)+1 == check_color(bd[d].frame.piece)){
+      // dの位置が盤の外、dの位置にある駒が自分の駒、dの位置の駒が相手の駒
+      return;
+    }else{
+      // dの位置に駒がない
+      set_check(d, p);
+      if (y <= p / 8 + ymax){
+	return;
+      }else{
+	y += dy; 
+      }    
+    }
+  }
+}
+
+void rook_check(int p){
+  str_check(p, 1, 0, 0, 0); // 右方向にチェックをつける
+  str_check(p, -1, 0, 0, 0); // 左方向にチェックをつける
+  str_check(p, 0, 1, 0, 0); // 下方向にチェックをつける
+  str_check(p, 0, -1, 0, 0); // 上方向にチェックをつける
+}
+void knight_check(int p){
+  str_check(p, 1, -2, 1, -2); // 2マス上、1マス右にチェックをつける
+  str_check(p, -1, -2, -1, -2); // 2マス上、1マス左にチェックをつける
+  str_check(p, 1, 2, 1, 2); // 2マス下、1マス右にチェックをつける
+  str_check(p, -1, 2, -1, 2); // 2マス下、1マス左にチェックをつける
+  str_check(p, -2, -1, -2, -1); // 2マス左、1マス上にチェックをつける
+  str_check(p, -2, 1, -2, 1); // 2マス左、1マス下にチェックをつける
+  str_check(p, 2, -1, 2, -1); // 2マス右、1マス上にチェックをつける
+  str_check(p, 2, 1, 2, 1); // 2マス右、1マス下にチェックをつける
+}
+void bishop_check(int p){
+  str_check(p, 1, -1, 0, 0); // 右上方向にチェックをつける
+  str_check(p, 1, 1, 0, 0); // 右下方向にチェックをつける
+  str_check(p, -1, -1, 0, 0); // 左上方向にチェックをつける
+  str_check(p, -1, 1, 0, 0); // 左下方向にチェックをつける
+}
+void queen_check(int p){
+  str_check(p, 1, 0, 0, 0); // 右方向にチェックをつける
+  str_check(p, -1, 0, 0, 0); // 左方向にチェックをつける
+  str_check(p, 0, 1, 0, 0); // 下方向にチェックをつける
+  str_check(p, 0, -1, 0, 0); // 上方向にチェックをつける
+  str_check(p, 1, -1, 0, 0); // 右上方向にチェックをつける
+  str_check(p, 1, 1, 0, 0); // 右下方向にチェックをつける
+  str_check(p, -1, -1, 0, 0); // 左上方向にチェックをつける
+  str_check(p, -1, 1, 0, 0); // 左下方向にチェックをつける
+}
+void king_check(int p){
+  str_check(p, 1, 0, 1, 0); // 右にチェックをつける
+  str_check(p, -1, 0, -1, 0); // 左にチェックをつける
+  str_check(p, 0, 1, 0, 1); // 下にチェックをつける
+  str_check(p, 0, -1, 0, -1); // 上にチェックをつける
+  str_check(p, 1, -1, 1, -1); // 右上にチェックをつける
+  str_check(p, 1, 1, 1, 1); // 右下にチェックをつける
+  str_check(p, -1, -1, -1, -1); // 左上にチェックをつける
+  str_check(p, -1, 1, -1, 1); // 左下にチェックをつける
+  // キャスリング
+  if (bd[p].frame.moved == 0 && flag == 0){
+    if (casling(p, 1) == 1){
+      set_check(p+2, p);
+    }
+    if (casling(p, 0) == 1){
+      set_check(p-2, p);
+    }
+  }
+}
+
+int casling(int p, int qk){
+  // キングの位置p, 左側(0)か右側(1)か
+  int i;
+  MAS dummy[65];
+  int size = (WSIZE-1) * qk;
+  qk = (qk * 2) - 1; // qkが0なら-1にする
+  copyboard(bd, dummy);
+  turn = change_player(turn);
+  check(bd, 1);
+  flag = 0;
+  reverse_board(bd);
+  turn = change_player(turn);
+  if (bd[p].check_num != 0){
+    copyboard(dummy, bd);
+    return 0;
+  }
+  for (i = qk; i+(p%8) != size; i+=qk){
+    if (check_color(bd[p+i].frame.piece) == turn){
+      //キングとルークの間に自分の駒がある
+      copyboard(dummy, bd);
+      return 0;
+    }
+  }
+  size = 2 * qk;
+  for (i = qk; i != size; i+=qk){
+    if (bd[p+i].check_num != 0){ 
+      // チェックがかかっている。
+      copyboard(dummy, bd);
+      return 0;
+    }
+  }
+  copyboard(dummy, bd);
+  if (bd[p+i].frame.piece == 0){
+    return 1;
+  }else{
+    return 0;
+  }
+
+}
+
+void str_check(int p, int dx, int dy, int xmax, int ymax){
+  // 現在の位置p, x方向の移動量dx, y方向の移動量dy, 上限max(0のときは限界まで)
+  int turn;
+  int d;
+  int x, y;
+  turn = check_color(bd[p].frame.piece);
+  x = p % 8 + dx;
+  y = p / 8 + dy;
+  while (1){
+    d = x + y * 8;
+    if (x >= WSIZE || x < 0 || y >= HSIZE || y < 0 || d < 0 || turn == check_color(bd[d].frame.piece)){
+      // dの位置が盤の外、dの位置にある駒が自分の駒
+      return;
+    }else if ((turn%2)+1 == check_color(bd[d].frame.piece)){
+      // dの位置の駒が相手の駒
+      set_check(d, p);
+      return;
+    }else{
+      // dの位置に駒がない
+      set_check(d, p);
+      if ((xmax != 0 && dx == xmax) || (ymax != 0 && dy == ymax)){
+	return;
+      }else{
+	x += dx; y += dy;
+      }
+    }
+  }
+}
+
+int check_color(int frame){
+  int i;
+  for (i = 0; i < 6; i++){
+    if (frame == b[i]){
+      return 1;
+    }else if (frame == w[i]){
+      return 2;
+    }
+  }
+  return -1;
+}
+  
+void free_check(){
+  int i;
+  for (i = 0; i < 64; i++){
+    bd[i].check_num = 0;
+  }
+}
+
+void set_check(int set_p, int p){
+  //　ここに移動後、キングにチェックがかかるか確認する。
+  MAS dummy[65];
+  int i;
+  if (flag == 0){
+    copyboard(bd, dummy);
+    bd[64] = bd[set_p];
+    bd[set_p].frame = bd[p].frame;
+    bd[p].frame.piece = NONE;
+    turn = change_player(turn);
+    check(bd, 1);
+    flag = 0;
+    reverse_board(bd);
+    turn = change_player(turn);
+    for ( i = 0; i < 64; i++){
+      if ((bd[i].frame.piece == b[5] && turn == check_color(b[5])) || (bd[i].frame.piece == w[5] && turn == check_color(w[5]))){
+        if (bd[i].check_num != 0){
+          copyboard(dummy, bd);
+          return;
+        }
+      }
+    }
+    copyboard(dummy, bd);
+  }
+  bd[set_p].check[bd[set_p].check_num] = bd[p].frame.piece;
+  bd[set_p].check_pos[bd[set_p].check_num] = p;
+  bd[set_p].check_num++;
+
+}

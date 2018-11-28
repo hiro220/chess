@@ -1,0 +1,56 @@
+
+
+/* main.c */
+#include <ncurses.h>
+#include <unistd.h>
+#include <locale.h>
+#include "help.h"
+#include "menu.h"
+#include "chess.h"
+#include "update_win.h"
+
+
+
+int main(int argc, char **argv){
+  int menu_num;
+  int x, y;
+
+  if (argc != 1){
+    printf("オプションは指定できません。\n");
+    return -1;
+  }
+  setlocale(LC_ALL, "");
+
+  initscr();
+      
+  start_color();
+  init_pair(COLOR_BLUE, COLOR_WHITE, COLOR_BLACK);
+  init_pair(COLOR_RED, COLOR_BLACK, COLOR_RED);
+  init_pair(COLOR_WHITE, COLOR_BLACK, COLOR_WHITE);
+  init_pair(COLOR_GREEN, COLOR_BLACK, COLOR_GREEN);
+  getmaxyx(stdscr, y, x);
+
+  while (x < 75 || y < 25){
+    clear();
+    mvprintw(y/2, x/2-20,"画面サイズを(75, 25)以上にしてください。");
+    refresh();
+    sleep(1);
+  getmaxyx(stdscr, y, x);
+  }
+  
+  while (1){
+    menu_num = select_menu();
+
+    if (menu_num == 1){
+      chess();
+    } else if (menu_num == 2){
+      help();
+    } else if (menu_num == 0){
+      break;
+    }
+  }
+
+  endwin();
+  
+  return 0;
+}

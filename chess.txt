@@ -1,0 +1,571 @@
+#include<ncurses.h>
+/* chess.h */
+#define WSIZE 8
+#define HSIZE 8
+#define RE_XY 1000
+// 駒の種類
+#define BP 1
+#define BR 2
+#define BN 3
+#define BB 4
+#define BQ 5
+#define BK 6
+#define WP 7
+#define WR 8
+#define WN 9
+#define WB 10
+#define WQ 11
+#define WK 12
+#define NONE 0
+#define QUIT 200000
+
+typedef struct piece{
+  int piece;
+  int moved;
+}PIECE;
+
+typedef struct mas{
+  PIECE frame;
+  int check[10];
+  int check_pos[10];
+  int check_num;
+}MAS;
+
+typedef struct log{
+  char log[5];
+}LOG;
+
+int change_pos(int p);
+int chess();
+void run();
+int checkmate();
+int move_piece();
+int select_piece();
+int select_position();
+void save_log(int p1, int p2, int piece);
+void promotion(int p1);
+void reverse_board(MAS board[]);
+void copyboard(MAS board[], MAS bd[]);
+int change_player(int turn);
+
+
+
+
+/* chess.c */
+#include<unistd.h>
+#include<string.h>
+#include<stdlib.h>
+#include "chess.h"
+#include "check.h"
+#include "update_win.h"
+
+
+MAS board[65];
+// board[64] は一手前の駒情報
+// frame.pieceに駒の種類,check[0]に前のマス,check[1]に今のマス
+LOG data[100];
+int turn = 2;
+// turn : 白が1,　黒が2
+int b[6] = {BP, BR, BN, BB, BQ, BK};
+int w[6] = {WP, WR, WN, WB, WQ, WK};
+int cnt;
+
+int chess(){
+  int i, j;
+  FILE *fp;
+  turn = 2;
+  cnt = 0;
+  // ダミー
+  board[64].frame.piece = b[0]; board[64].check[0] = 0; board[64].check[0] = 0;
+  //  手数のカウント
+  cnt = 0;
+  // 初期配置
+  for(i = 0; i < HSIZE; i++){
+    for(j = 0; j < WSIZE; j++){
+      if (i == 1){
+	board[j + i*8].frame.piece = b[0];
+      }else if (i == 6){
+	board[j + i*8].frame.piece = w[0];
+      }else if (i == 0){
+	if (j < 5)
+	  board[j + i*8].frame.piece = b[j+1];
+	else
+	  board[j + i*8].frame.piece = b[8-j];
+      }else if (i == 7){
+	if (j < 5)
+	  board[j + i*8].frame.piece = w[j+1];
+	else
+	  board[j + i*8].frame.piece = w[8-j];
+      }else{
+	board[j + i*8].frame.piece = NONE;
+      }
+      board[j + i*8].frame.moved = 0;
+    }
+  }
+
+  if ((fp = fopen("gamecount.txt", "r")) == NULL){
+    printerror("gamecount.txtが開けません。");
+  }else{
+    fscanf(fp, "%d", &i);
+  }fclose(fp); i++;
+  if ((fp = fopen("gamecount.txt", "w")) == NULL){
+    printerror("gamecount.txtが開けません。");
+  }else{
+    fprintf(fp, "%d", i);
+  }fclose(fp);
+  if ((fp = fopen("log.txt", "a")) == NULL){
+    printerror("log.txtが開けません。");
+  }else{
+    fprintf(fp, "ID:%d\n", i);
+  }fclose(fp);
+
+  // 画面の表示
+  init_window();
+
+  // ゲームの実行
+  run();
+
+  return 0;
+}
+
+void run(){
+  // 実行処理
+
+  int result = 0;
+  reverse_board(board);
+  check(board, 0);
+  result = checkmate();
+  while (result == 0){
+    draw_piece(65);
+    if (result == 0){
+      result = move_piece();
+      if (result == 1){
+        if (turn == 1){
+          result = 4;
+        }else{
+          result = 5;
+        }
+        break;
+      }    
+      turn = update_player(turn);
+    }
+    check(board, 0);
+    result = checkmate();
+  }
+  print_result(result);
+}
+
+int stalemate(){
+  int i;
+  for (i = 0; i < 64; i++){
+    if (board[i].check_num != 0){
+      return 0;
+    }
+  }
+  return 1;
+}
+
+int checkmate(){
+  int i, j, p, p2, x, y;
+  int fl1 = 0, fl2 = 0;
+  MAS dummy[65];
+
+  copyboard(board, dummy);
+
+  // キングの位置を探索する。
+  for (i = 0; i < 64; i++){
+    if (board[i].frame.piece == b[5]){
+      if(turn == check_color(b[5])){
+        p = i;
+      }
+      fl1 = 1;
+    }else if (board[i].frame.piece == w[5]){
+      if(turn == check_color(w[5])){
+        p = i;
+      }
+      fl2 = 1;
+    } 
+  }
+  if (fl1 == 1 && fl2 == 1){
+  }else{
+    return turn; // 負けた側のturnを返す。
+  }
+  x = p % 8; y = p / 8;
+  turn = change_player(turn);
+  check(dummy, 1);
+  reverse_board(dummy);
+  turn = change_player(turn);
+  if (dummy[p].check_num == 0){
+    if (stalemate() == 1){
+      return 3; // ステイルメイトなら3を返す。
+   }
+    return 0;
+  }else{
+  for (i = 0; i < 3; i++){
+    x = x + i - 1;
+    for (j = 0; j < 3; j++){
+      y = y + j - 1;
+      if (dummy[x+y*8].check_num == 0 && (turn != check_color(dummy[x+y*8].frame.piece))){
+        // キングの周囲8マス、キングにチェックがかかっていない。
+        mvprintw(0,0,"a");
+        refresh();
+        return 0;
+      }
+    }
+  }
+  x--; y--;
+  for (i = 0; i < dummy[p].check_num; i++){
+    p2 = dummy[p].check_pos[i];
+    if (board[p2].check_num != 0){
+      for (j = 0; j < p2; j++){
+        if ((board[p2].check[j] != b[5] || board[p2].check[j] != w[5]) && dummy[p].check_num == 1){
+          
+        mvprintw(0,0,"b");
+        refresh();
+        return 0; // チェックをかけている駒をキング以外の駒で取れる。
+        }else{
+          dummy[64] = dummy[p2];
+          dummy[p2].frame = dummy[p].frame;
+          dummy[p].frame.piece = NONE;
+          turn = change_player(turn);
+          check(dummy, 1);
+          reverse_board(dummy);
+          turn = change_player(turn);
+          if (dummy[p2].check_num == 0){
+        mvprintw(0,0,"c");
+        refresh();
+            return 0;
+          }
+          dummy[p].frame = dummy[p2].frame;
+          dummy[p2] = dummy[64];
+        }
+      }
+    }
+  }
+  }
+        mvprintw(0,0,"d");
+        refresh();
+  // この時点でチェックをかけている駒をとることができない。
+  return turn;
+}
+
+int move_piece(){
+  int p1, p2 = QUIT, i, j;
+  int fl = 0;
+  while (p2 == QUIT){
+    fl = 0;
+    while (fl == 0){
+      p1 = change_pos(select_piece());
+      if (p1 == change_pos('r')){
+        return 1;
+      }
+      for (i = 0; i < 64; i++){
+	for(j = 0; j < board[i].check_num; j++){
+	  if (board[p1].frame.piece == board[i].check[j] && p1 == board[i].check_pos[j]){
+	    fl = 1;
+	  }
+	}
+      }
+      if (fl == 0){
+	write_msg("動かせない駒です。");
+      }else{
+	write_msg("");
+      }
+    }
+    draw_piece(p1);
+    p2 = select_position(p1);
+  }
+  p2 = change_pos(p2);
+  save_log(p1, p2, board[p1].frame.piece);
+
+  // 移動した駒情報の保存
+  board[64].frame.piece = board[p1].frame.piece;
+  board[64].check[0] = p1;
+  board[64].check[1] = p2;
+
+  // アンパッサンの処理
+  if ((board[p1].frame.piece == b[0] || board[p1].frame.piece == w[0]) && board[p2].frame.piece == NONE){
+    if (p2%8 != p1%8){
+      board[p2+8].frame.piece = NONE;
+    }
+  }
+
+  // キャスリングの処理
+  if ((board[p1].frame.piece == b[5] || board[p1].frame.piece == w[5]) && (p1 - p2)%2 == 0){
+    if (p1 > p2){
+      // 左ルークの移動
+      board[8*7].frame.moved = 1;
+      board[p2+1].frame = board[8*7].frame;
+      board[8*7].frame.piece = NONE;
+    }else{
+      // 右ルークの移動
+      board[8*7+7].frame.moved = 1;
+      board[p2-1].frame = board[8*7+7].frame;
+      board[8*7+7].frame.piece = NONE;
+    }
+  }
+
+  // 駒の移動
+  board[p1].frame.moved = 1;
+  board[p2].frame = board[p1].frame;
+  board[p1].frame.piece = NONE;
+  promotion(p2);
+  cnt++;
+  return 0;
+}
+
+int change_pos(int p){
+  int x, y;
+  int x1, y1;
+  x = p % RE_XY;
+  y = p / RE_XY;
+  x1 = x - 'a';
+  y1 = y - '0';
+  y1 = HSIZE - y1;
+  return (x1 + y1*8);
+}
+
+int select_piece(){
+  int ch, fl = 0, fl1 = 0, fl2 = 0;
+  int x, y;
+  while (1){
+    fl1 = 0; fl2 = 0;
+    while (fl1 == 0 || fl2 == 0){
+      ch = getch();
+      if (ch >= 'a' && ch <= 'h'){
+	x = ch;
+	fl1 = 1;
+      }else if (ch >= '1' && ch <= '8'){
+	y = ch;
+	fl2 = 1;
+      }else if (ch == 'r'){
+        write_msg("リザイン(投了)しますか？:'y'or'n'");
+        x = getch();
+        if (x == 'y'){
+          return ch;
+        }else{
+          write_msg("");
+        }
+      }
+    }
+    ch = x + y*RE_XY;
+    if (turn == check_color(board[change_pos(ch)].frame.piece)){
+      fl = 1;
+    }
+    if (board[change_pos(ch)].frame.piece == NONE){
+      write_msg("駒がないマスです。");
+    }else if (fl == 1){
+      write_msg("");
+      break;
+    }
+  }
+  return ch;
+}
+
+int select_position(int p){
+  int x, y, ch, p2, i;
+  int fl = 0, fl1 = 0, fl2 = 0;
+  int slc = board[p].frame.piece;
+  while (fl == 0){
+    fl1 = 0; fl2 = 0;
+    while(fl1 == 0 || fl2 == 0){
+      ch = getch();
+      if (ch >= 'a' && ch <= 'h'){
+	x = ch;
+	fl1 = 1;
+      }else if (ch >= '1' && ch <= '8'){
+	y = ch;
+	fl2 = 1;
+      }else if (ch == 'q'){
+        write_msg("駒の選択を解除しました。");
+        draw_piece(65);
+	return QUIT;
+      }
+    }
+    ch = x + y * RE_XY;
+    p2 = change_pos(ch);
+    for(i = 0; i < board[p2].check_num; i++){
+      if (slc == board[p2].check[i] && p == board[p2].check_pos[i]){
+	fl = 1;
+      }
+    }
+    if (fl == 0){
+      write_msg("移動できないマスです。");
+    }else{
+      write_msg("");
+    }
+  }
+  return ch;
+}
+
+void promotion(int p){
+  int ch;
+  if (p/8 == 0 || p/8 == 7){
+    if (board[p].frame.piece == b[0]){
+      write_msg("プロモーション[r:♖, n:♘, b:♗, q:♕]");
+      while (1){
+	ch = getch();
+	if (ch == 'q'){
+	  board[p].frame.piece = b[4];
+	  break;
+	}else if (ch == 'b'){
+	  board[p].frame.piece = b[3];
+	  break;
+	}else if (ch == 'n'){
+	  board[p].frame.piece = b[2];
+	  break;
+	}else if (ch == 'r'){
+	  board[p].frame.piece = b[1];
+	  break;
+	}
+      }
+    }else if(board[p].frame.piece == w[0]){
+      write_msg("プロモーション[r:♖, n:♘, b:♗, q:♕]");
+      while (1){
+	ch = getch();
+	if (ch == 'q'){
+	  board[p].frame.piece = w[4];
+	  break;
+	}else if (ch == 'b'){
+	  board[p].frame.piece = w[3];
+	  break;
+	}else if (ch == 'n'){
+	  board[p].frame.piece = w[2];
+	  break;
+	}else if (ch == 'r'){
+	  board[p].frame.piece = w[1];
+	  break;
+	}
+      }
+    }
+  }
+  write_msg("");
+  return;
+}
+
+void reverse_board(MAS board[]){
+  int i, j, p1, p2;
+  MAS tmp;
+  for (i = 0; i < HSIZE/2; i++){
+    for (j = 0; j < WSIZE; j++){
+      p1 = j + i * 8;
+      p2 = (WSIZE - j - 1) + (HSIZE - i - 1) * 8;
+      tmp = board[p1];
+      board[p1] = board[p2];
+      board[p2] = tmp;
+    }
+  }
+  return;
+}
+
+void save_log(int p1, int p2, int piece){
+  FILE *fp;
+  char kihu[6];
+  char *num;
+  int x, y;
+  int snum = 0;
+  int i, tmp;
+
+  if (piece == b[1] || piece == w[1]){
+    kihu[snum] = 'R';
+    snum++;
+  }
+  if (piece == b[2] || piece == w[2]){
+    kihu[snum] = 'N';
+    snum++;
+  }
+  if (piece == b[3] || piece == w[3]){
+    kihu[snum] = 'B';
+    snum++;
+  }
+  if (piece == b[4] || piece == w[4]){
+    kihu[snum] = 'Q';
+    snum++;
+  }
+  if (piece == b[5] || piece == w[5]){
+    kihu[snum] = 'K';
+    snum++;
+  }
+  if (board[p2].frame.piece != NONE){
+    kihu[snum] = 'x'; snum++;
+  }
+
+  x = p2 % 8; 
+  y = 8 - p2 / 8; 
+  if (cnt%2 == 1){
+    x = 7-x; y = 9 - y;
+  }
+  kihu[snum] = 'a' + x; snum++;
+  kihu[snum] = '0' + y; snum++;
+      
+  if (cnt/2 > 4){
+    i = 4;
+  }else{
+    i = cnt/2;
+  }
+  num = malloc(sizeof(char)*2);
+  if (num == NULL){
+    printerror("メモリが足りません。");
+  }
+  if (cnt%2 == 0 && cnt/2 > 4){
+    for (i = 0; i < 4; i++){
+      tmp = cnt/2+i-5+2;
+      if(tmp < 10){
+	num[0] = tmp + '0';
+	num[1] = '\0';
+      }else{
+	num[0] = tmp/10 + '0';
+	num[1] = tmp%10 + '0';
+	num[2] = '\0';
+      }
+      write_log(0, i+1, num, 0);
+      write_log(1, i+1, data[cnt-9+2*i].log, 0);
+      write_log(2, i+1, data[cnt-8+2*i].log, 0);
+      write_log(0, i+2, " ", 0);
+      write_log(1, i+2, " ", 0);
+      write_log(2, i+2, "    ", 0);
+    }
+  }
+  strcpy(data[cnt].log, kihu);
+  tmp = cnt/2+1;
+  if(tmp < 10){
+    num[0] = tmp + '0';
+    num[1] = '\0';
+  }else{
+    num[0] = tmp/10 + '0';
+    num[1] = tmp%10 + '0';
+    num[2] = '\0';
+  }
+  if (cnt%2 == 0){
+    write_log(0, i+1, num, 0);
+  }
+  write_log(cnt%2+1, i+1, kihu, 0);
+
+  if ((fp = fopen("log.txt", "a")) == NULL){
+    clear();
+    printerror("log.txtが開けません。");
+    sleep(2);
+    endwin();
+  }else{
+    fprintf(fp, "%d\t%s\n", cnt, kihu);
+  }
+  fclose(fp);
+  free(num);
+}
+
+void copyboard(MAS board[], MAS bd[]){
+  int i, j;
+  for (i = 0; i < 65; i++){
+    bd[i].frame.piece = board[i].frame.piece;
+    bd[i].frame.moved = board[i].frame.moved;
+    for (j = 0; j < board[i].check_num; j++){
+      bd[i].check[j] = board[i].check[j];
+      bd[i].check_pos[j] = board[i].check_pos[j];
+    }
+    bd[i].check_num = board[i].check_num;
+  }
+}
+
+int change_player(int turn){
+  return (turn % 2) + 1;
+}

@@ -1,0 +1,303 @@
+
+
+/* update_win.h */
+#define WSIZE 8
+#define HSIZE 8
+#define SX 7
+#define SY 4
+#define PX 52
+#define PY 4
+#define LX 46
+#define LY 8
+#define LSIZE 8
+#define MX 7
+#define MY 21
+#define MSIZE 42
+
+// 駒の種類
+#define BP 1
+#define BR 2
+#define BN 3
+#define BB 4
+#define BQ 5
+#define BK 6
+#define WP 7
+#define WR 8
+#define WN 9
+#define WB 10
+#define WQ 11
+#define WK 12
+
+typedef struct mas MAS;
+
+void init_window();
+void draw_piece(int p);
+int update_player(int turn);
+void draw_log();
+void printerror(char *msg);
+void print_result(int result);
+void create_board();
+void create_logbox();
+void write_log(int x, int y, char *txt, int flag);
+void create_messagebox();
+void write_msg(char *txt);
+
+
+
+/* update_win.c */
+#include <ncurses.h>
+#include <unistd.h>
+#include <string.h>
+#include <locale.h>
+#include "update_win.h"
+#include "chess.h"
+
+extern MAS board[64];
+int x, y;
+
+void init_window(){
+  bkgd(' '|COLOR_PAIR(COLOR_WHITE));
+  clear();
+  curs_set(0);
+  getmaxyx(stdscr, y, x);
+  create_board();
+  create_logbox();
+  create_messagebox();
+  draw_piece(65);
+  mvprintw(PY, PX, "・");    
+  move(PY,PX);
+  mvprintw(SY, SX + 15 + 4*HSIZE, "Player1 ♔");
+  mvprintw(SY + 2, SX + 15 + 4*HSIZE, "Player2 ♚");
+  
+  /* (22, 65)くらいを推奨 */
+  
+  refresh();
+  
+  return;
+}
+
+int update_player(int turn){
+  if (turn == 2){
+    mvprintw(PY, PX, "  ");
+    mvprintw(PY + 2, PX, "・");
+  }else if (turn == 1){
+    mvprintw(PY + 2, PX, "  ");
+    mvprintw(PY, PX, "・");
+  }
+  return change_player(turn);
+}
+
+void draw_piece(int p){
+
+  int i, j, k;
+  char piece[5];
+  for (i = 0; i < WSIZE; i++){
+    for (j = 0; j < HSIZE; j++){
+      if (board[j + 8*i].frame.piece == BP){
+	// attron(COLOR_PAIR(COLOR_WHITE));
+	strcpy(piece, " ♟ ");
+      }else if (board[j + 8*i].frame.piece == BR){
+	strcpy(piece, " ♜ ");
+      }else if (board[j + 8*i].frame.piece == BN){
+	strcpy(piece, " ♞ ");
+      }else if (board[j + 8*i].frame.piece == BB){
+	strcpy(piece, " ♝ ");
+      }else if (board[j + 8*i].frame.piece == BQ){
+	strcpy(piece, " ♛ ");
+      }else if (board[j + 8*i].frame.piece == BK){
+	strcpy(piece, " ♚ ");
+      }else if (board[j + 8*i].frame.piece == WP){
+	strcpy(piece, " ♙ ");
+      }else if (board[j + 8*i].frame.piece == WR){
+	strcpy(piece, " ♖ ");
+      }else if (board[j + 8*i].frame.piece == WN){
+	strcpy(piece, " ♘ ");
+      }else if (board[j + 8*i].frame.piece == WB){
+	strcpy(piece, " ♗ ");
+      }else if (board[j + 8*i].frame.piece == WQ){
+	strcpy(piece, " ♕ ");
+      }else if (board[j + 8*i].frame.piece == WK){
+	strcpy(piece, " ♔ ");
+      }else{
+	strcpy(piece, "   ");
+      }
+      if (p == 65){
+	attron(COLOR_PAIR(COLOR_WHITE));
+      }else if (p == j+8*i){
+	attron(COLOR_PAIR(COLOR_GREEN));
+      }else{
+	for (k = 0; k < board[j+8*i].check_num; k++){
+	  if (board[j+8*i].check[k] == board[p].frame.piece && board[j+8*i].check_pos[k] == p){
+	    attron(COLOR_PAIR(COLOR_RED));
+	  }
+	}
+      }
+      mvprintw(SY + 1 + 2*i, SX + 1 + 4*j, "%s", piece);
+      attron(COLOR_PAIR(COLOR_WHITE));
+    }
+  }
+  
+ 
+  return;
+}
+
+void draw_log(){
+
+
+}
+
+void printerror(char *msg){
+  curs_set(0);
+  clear();
+  mvprintw(y/2, x/2 - (strlen(msg) / 2), msg);
+  refresh();
+  sleep(3);
+  endwin();
+}
+
+void print_result(int result){
+  if (result == 4){
+    write_msg("リザイン！　player1の勝ち");
+  }if (result == 5) {
+    write_msg("リザイン！　player2の勝ち");
+  }else{
+      reverse_board(board);
+      draw_piece(65);
+  if (result == 1){
+    write_msg("チェックメイト！　player1の勝ち");
+  }else if (result == 2){
+    write_msg("チェックメイト！　player2の勝ち");
+  }else if (result == 3){
+    write_msg("ステイルメイト！　引き分け");
+  }
+  }
+  refresh();
+  while (result != '\n'){
+    result = getch();
+  }
+  bkgd(COLOR_PAIR(COLOR_BLUE));
+      
+  return;
+}
+
+void create_board(){
+  int i, j;
+
+  for (i = 0; i < HSIZE; i++){
+    mvprintw(SY + 1 + 2*i, SX-1, "%d", 8 - i);
+  }
+  for (i = 0; i < WSIZE; i++){
+    mvprintw(SY-1, SX + 2 + 4*i, "%c", 'a' + i);
+  }
+  for (i = 0; i <= HSIZE; i++){
+    for (j = 0; j <= WSIZE; j++){
+      if (j < HSIZE){
+	mvhline(SY + 2*i, SX + 1 + 4*j, ACS_HLINE, 3);
+      }
+      if (i < WSIZE){
+	mvvline(SY + 1 + 2*i, SX + 4*j, ACS_VLINE, 1);
+      }
+      if(j == 0){
+	mvvline(SY + 2*i, SX, ACS_LTEE, 1);
+      }else if(j == HSIZE){	
+	mvvline(SY + 2*i, SX + 4*j, ACS_RTEE, 1);
+      }else if(i == 0){
+	mvhline(SY, SX + 4*j, ACS_TTEE, 1);
+      }else if(i == WSIZE){
+	mvhline(SY + 2*i, SX + 4*j, ACS_BTEE, 1);
+      }else{
+	mvvline(SY + 2*i, SX + 4*j, ACS_PLUS,1);
+      }
+    }
+  }
+  i--; j--;
+  mvhline(SY, SX, ACS_ULCORNER, 1);
+  mvhline(SY, SX + 4*j, ACS_URCORNER, 1);
+  mvhline(SY + 2*i, SX, ACS_LLCORNER, 1);
+  mvhline(SY + 2*i, SX + 4*j, ACS_LRCORNER, 1);
+}
+
+void create_logbox(){
+  int i, j;
+
+  for (i = 0; i <= 6; i++){
+    for (j = 0; j <= 3; j++){
+      if (j < 3){
+	mvhline(LY + 2*i, LX + 1 + (LSIZE+1)*j, ACS_HLINE, LSIZE);
+      }
+      if (i < 6){
+	mvvline(LY + 1 + 2*i, LX + (LSIZE+1)*j, ACS_VLINE, 1);
+      }
+      if(j == 0){
+	mvvline(LY + 2*i, LX, ACS_LTEE, 1);
+      }else if(j == 3){	
+	mvvline(LY + 2*i, LX + (LSIZE+1)*j, ACS_RTEE, 1);
+      }else if(i == 0){
+	mvhline(LY, LX + (LSIZE+1)*j, ACS_TTEE, 1);
+      }else if(i == 6){
+	mvhline(LY + 2*i, LX + (LSIZE+1)*j, ACS_BTEE, 1);
+      }else{
+	mvvline(LY + 2*i, LX + (LSIZE+1)*j, ACS_PLUS,1);
+      }
+    }
+  }
+  i--; j--;
+  mvhline(LY, LX, ACS_ULCORNER, 1);
+  mvhline(LY, LX + (LSIZE+1)*j, ACS_URCORNER, 1);
+  mvhline(LY + 2*i, LX, ACS_LLCORNER, 1);
+  mvhline(LY + 2*i, LX + (LSIZE+1)*j, ACS_LRCORNER, 1);
+  write_log(0,0,"手",1);
+  write_log(1,0,"♔",1);
+  write_log(2,0,"♚",1);
+}
+
+void write_log(int x, int y, char *txt, int flag){
+  int size;
+  if (flag == 1){
+    size = strlen(txt)/6; // 全角なら一文字のサイズ3
+  }else{
+    size = strlen(txt)/2 - 1; // 半角なら一文字のサイズ1
+  }
+  mvprintw(LY+1+y*2, LX+(LSIZE/2)+x*(LSIZE+1)-size, "    ");
+  mvprintw(LY+1+y*2, LX+(LSIZE/2)+x*(LSIZE+1)-size, "%s", txt);
+}
+
+void create_messagebox(){
+  int i, j;
+
+  for (i = 0; i <= 1; i++){
+    for (j = 0; j <= 1; j++){
+      if (j < 1){
+	mvhline(MY + 2*i, MX + 1 + (MSIZE+1)*j, ACS_HLINE, MSIZE);
+      }
+      if (i < 1){
+	mvvline(MY + 1 + 2*i, MX + (MSIZE+1)*j, ACS_VLINE, 1);
+      }
+      if(j == 0){
+	mvvline(MY + 2*i, MX, ACS_LTEE, 1);
+      }else if(j == 3){	
+	mvvline(MY + 2*i, MX + (MSIZE+1)*j, ACS_RTEE, 1);
+      }else if(i == 0){
+	mvhline(MY, MX + (MSIZE+1)*j, ACS_TTEE, 1);
+      }else if(i == 6){
+	mvhline(MY + 2*i, MX + (MSIZE+1)*j, ACS_BTEE, 1);
+      }else{
+	mvvline(MY + 2*i, MX + (MSIZE+1)*j, ACS_PLUS,1);
+      }
+    }
+  }
+  i--; j--;
+  mvhline(MY, MX, ACS_ULCORNER, 1);
+  mvhline(MY, MX + (MSIZE+1)*j, ACS_URCORNER, 1);
+  mvhline(MY + 2*i, MX, ACS_LLCORNER, 1);
+  mvhline(MY + 2*i, MX + (MSIZE+1)*j, ACS_LRCORNER, 1); 
+  mvprintw(MY + 1, MX + 1, "msg: ");
+}
+
+void write_msg(char *txt){
+  int i;
+  for (i = 0; i < MSIZE-6; i++){
+    mvprintw(MY+1, MX+6+i, " ");
+  }
+  mvprintw(MY+1, MX+6, "%s", txt);
+}
