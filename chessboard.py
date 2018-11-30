@@ -92,6 +92,8 @@ class Chess_Board:
         lx, ly = self.getPosition(i)
         self.plist[i].move()
         self.board[ly][lx] = 0
+        if self.board[y][x] != 0:
+            self.plist[self.board[y][x]].deactivate()
         self.board[y][x] = i
 
     def makeList(self):
@@ -103,6 +105,10 @@ class Chess_Board:
         # チェックをかけている駒と、かかっている場所のリストを作る
         self.clist = []
         for i, p in enumerate(self.plist):
+            if not p.isActivate():
+                # 駒が盤面に残っていないならスルー。
+                self.clist.append([])
+                continue
             color = p.getColor()
             clist = []
             x, y = self.getPosition(i)
@@ -141,9 +147,9 @@ class Chess_Board:
         i = self.board[y][x]
         li = []
         num = 1
-        if self.plist[i].ismove():
+        if not self.plist[i].ismove():
             num += 1
-        for a in range(2):
+        for a in range(num):
             y += self.turn
             if (0 <= x < BOARD_SIZE) and (0 <= y < BOARD_SIZE):
                 i = self.board[y][x]

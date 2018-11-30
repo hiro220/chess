@@ -20,10 +20,11 @@ NONE = 20
 
 class Chess_Piece:
     """駒の種類を保存するクラス。駒の種類、生きた駒かは変更可能。"""
-    def __init__(self, piece):
+    def __init__(self, piece, activate=True):
         self.piece = piece
         self.color = self._getcolor(piece)
         self.moved = False
+        self.active = activate
 
     def _getcolor(self, piece):
         if piece == NONE:
@@ -41,6 +42,12 @@ class Chess_Piece:
     
     def ismove(self):
         return self.moved
+
+    def isActivate(self):
+        return self.active
+    
+    def deactivate(self):
+        self.active = False
     
     def getPiece(self):
         return self.piece
