@@ -1,6 +1,7 @@
 # coding:utf-8
 
 from piece import Chess_Piece
+import copy
 
 # 定義
 BOARD_SIZE = 8
@@ -22,9 +23,11 @@ NONE = 20
 
 class Chess_Board:
     def __init__(self):
+        # 初期化
         self.turn = WHITE   # 先手は白
         self._makePiece()
         self._makeBoaed()
+        self._makeDummy()
         self.lmove = 0
     
     def chenge_turn(self):
@@ -60,6 +63,10 @@ class Chess_Board:
             self.board[BOARD_SIZE-1][i] = i + 1 + BOARD_SIZE * 3
             self.board[BOARD_SIZE-2][i] = i + 1 + BOARD_SIZE * 2
 
+    def _makeDummy(self):
+        # ボードをもう一つ計算用に用意する。
+        self.dummy = copy.deepcopy(self.board)
+
     def getPosition(self, i):
         # 引数で指定したIDの駒があるマスを返却する。
         for y, a in enumerate(self.board):
@@ -88,6 +95,7 @@ class Chess_Board:
         self.board[y][x] = i
 
     def makeList(self):
+        # チェックリストと動かせる駒のリストを作成する。
         self.makecList()
         self.makemList()
 
@@ -197,14 +205,20 @@ class Chess_Board:
         # 指定したマスの駒が動けるか
         return self.board[y][x] in self.mlist
 
+    def getPiece(self, x, y):
+        # ボード(x, y)の駒のIDを返却。
+        return self.board[y][x]
+
 if __name__=='__main__':
     test = Chess_Board()
-    print(test.board)
     for a in test.board:
         for b in a:
             print(test.plist[b].getPiece(), end=' ')
         print()
     test.makeList()
+    test.move(1, 4,4)
+    print(test.board)
+    print(test.dummy)
     print(test.mlist)
     print(test.clist)
     print(test.incList(0,1))

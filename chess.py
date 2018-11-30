@@ -113,7 +113,7 @@ class GraphicalChess(tk.Frame):
     def game(self):
         self.chess.makeList()
         self.showmPiece()
-        #x, y = self.getMouse()
+        self.canvas.bind("<Button-1>", self._selectPiece)
         #self.showCheck(x, y)
         #self.game()
 
@@ -126,6 +126,22 @@ class GraphicalChess(tk.Frame):
     def _clicked(self, e):
         self.x, self.y = e.x, e.y
         print(e.x, e.y)
+
+    def _selectPiece(self, e):
+        x, y = self._board_position(e.x, e.y)
+        if self.chess.inmList(x, y):
+            self.showCheck(x, y)
+            self.x, self.y = x, y
+            self.canvas.bind("<Button-1>", self._selectPosition)
+
+    def _selectPosition(self, e):
+        x, y = self._board_position(e.x, e.y)
+        if self.chess.incList(x, y):
+            self.chess.move(self.chess.getPiece(self.x, self.y), x, y)
+            self.x, self.y = x, y
+            self.show()
+            self.chess.chenge_turn()
+            self.game()
 
     def _moved(self, e):
         # マウスが動いたときの処理
