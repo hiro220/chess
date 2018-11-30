@@ -200,6 +200,9 @@ class Chess_Board:
                 return True
         return False
 
+    def checked(self, i, x, y):
+        return [x, y] in self.clist[i]
+
     def makemList(self):
         # 動かせる駒のリストを作る。
         self.mlist = []
@@ -227,4 +230,4 @@ if __name__=='__main__':
     print(test.dummy)
     print(test.mlist)
     print(test.clist)
-    print(test.incList(0,1))
+    print(test.incList(0,5))

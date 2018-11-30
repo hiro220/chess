@@ -22,6 +22,8 @@ MC = "gray"
 # 移動可能なマスの色
 CC1 = "red"
 CC2 = "red"
+# 選択している駒があるマスの色
+SC = "blue"
 
 class GraphicalChess(tk.Frame):
     def __init__(self, master=None):
@@ -111,8 +113,7 @@ class GraphicalChess(tk.Frame):
         self.chess.makeList()
         self.showmPiece()
         self.canvas.bind("<Button-1>", self._selectPiece)
-        #self.showCheck(x, y)
-        #self.game()
+        self.msg.set("動かす駒を選択してください。")
 
     def _clicked(self, e):
         self.x, self.y = e.x, e.y
@@ -123,16 +124,22 @@ class GraphicalChess(tk.Frame):
         if self.chess.inmList(x, y):
             self.showCheck(x, y)
             self.x, self.y = x, y
+            self._set_bgcolor(y, x, SC)
             self.canvas.bind("<Button-1>", self._selectPosition)
+            self.msg.set("移動先を選択してください。")
+        else:
+            self.msg.set("Caution:動かせない駒です。")
 
     def _selectPosition(self, e):
         x, y = self._board_position(e.x, e.y)
-        if self.chess.incList(x, y):
+        if self.chess.checked(self.chess.getPiece(self.x, self.y), x, y):
             self.chess.move(self.chess.getPiece(self.x, self.y), x, y)
             self.x, self.y = x, y
             self.show()
             self.chess.chenge_turn()
             self.game()
+        else:
+            self.msg.set("Caution:そのマスには動けません。")
 
     def _moved(self, e):
         # マウスが動いたときの処理
@@ -183,9 +190,9 @@ class GraphicalChess(tk.Frame):
         for y in range(BOARD_SIZE):
             for x in range(BOARD_SIZE):
                 if (x+y)%2 == 0:
-                    self._setbgcolor(y, x, BG1)
+                    self._set_bgcolor(y, x, BG1)
                 else:
-                    self._setbgcolor(y, x, BG2)
+                    self._set_bgcolor(y, x, BG2)
 
     def showmPiece(self):
         for y in range(BOARD_SIZE):
