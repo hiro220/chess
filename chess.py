@@ -99,11 +99,8 @@ class GraphicalChess(tk.Frame):
         self.count = 0
         self.x, self.y = -1, -1
 
-    def _board_position(self, x, y):
-        # キャンバス上での座標をボードのマス基準の座標に変換する。
-        x = (x - F["x1"]) // MAS_SIZE
-        y = (y - F["y1"]) // MAS_SIZE
-        return int(x), int(y)
+
+    # bind系のメソッド
 
     def start(self):
         self.button.configure(state='disable')
@@ -116,12 +113,6 @@ class GraphicalChess(tk.Frame):
         self.canvas.bind("<Button-1>", self._selectPiece)
         #self.showCheck(x, y)
         #self.game()
-
-    def _canvas_position(self, x, y):
-        # マス基準の座標をキャンバス上におけるそのマスの中心値に変換する。
-        x = F["x1"] + MAS_SIZE/2 + MAS_SIZE * x
-        y = F["y1"] + MAS_SIZE/2 + MAS_SIZE * y
-        return x, y
 
     def _clicked(self, e):
         self.x, self.y = e.x, e.y
@@ -153,6 +144,8 @@ class GraphicalChess(tk.Frame):
             # マウスカーソル上のマスの色を変える。
             self.lmouse = [x, y, self.canvas.itemcget(self.mas[y][x], "fill")]
             self._setbgcolor(y, x, MC)
+    
+    # ここまでbind系
 
     def _set_bgcolor(self, y, x, color):
         # (x, y)のマスの色をcolorにする。マウスカーソル上のマスだったなら、保存している色を更新する。
@@ -163,6 +156,18 @@ class GraphicalChess(tk.Frame):
     def _setbgcolor(self, y, x, color):
         # (x, y)のマスの色をcolorにする。
         self.canvas.itemconfigure(self.mas[y][x], fill=color)
+
+    def _canvas_position(self, x, y):
+        # マス基準の座標をキャンバス上におけるそのマスの中心値に変換する。
+        x = F["x1"] + MAS_SIZE/2 + MAS_SIZE * x
+        y = F["y1"] + MAS_SIZE/2 + MAS_SIZE * y
+        return x, y
+
+    def _board_position(self, x, y):
+        # キャンバス上での座標をボードのマス基準の座標に変換する。
+        x = (x - F["x1"]) // MAS_SIZE
+        y = (y - F["y1"]) // MAS_SIZE
+        return int(x), int(y)
 
     def update(self):
         time.sleep(0.1)
