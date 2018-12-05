@@ -115,23 +115,23 @@ class Chess_Board:
             if color == self.turn:
                 piece = p.getPiece()
                 piece = piece % 6   # pieceの値をすべてBLACKで考える。
-                if piece == B_ROOK:
+                if piece == B_ROOK: # ルークのとき
                     dif = [[1,0],[-1,0],[0,1],[0,-1]]
                     for a in dif:
                         clist += self.recursionCheck(x, y, a[0], a[1])
-                elif piece == B_KNIGHT:
+                elif piece == B_KNIGHT: # ナイトのとき
                     dif = [[2,1],[2,-1],[1,2],[1,-2],[-1,2],[-1,-2],[-2,1],[-2,-1]]
                     for a in dif:
                         clist += self.simpleCheck(x, y, a[0], a[1])
-                elif piece == B_BISHOP:
+                elif piece == B_BISHOP: # ビショップのとき
                     dif = [[1,1],[1,-1],[-1,1],[-1,-1]]
                     for a in dif:
                         clist += self.recursionCheck(x, y, a[0], a[1])
-                elif piece == B_QUEEN:
+                elif piece == B_QUEEN: # クイーンのとき
                     dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
                     for a in dif:
                         clist += self.recursionCheck(x, y, a[0], a[1])
-                elif piece == B_KING:
+                elif piece == B_KING: # キングのとき
                     dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
                     for a in dif:
                         clist += self.simpleCheck(x, y, a[0], a[1])
