@@ -176,10 +176,6 @@ class GraphicalChess(tk.Frame):
         y = (y - F["y1"]) // MAS_SIZE
         return int(x), int(y)
 
-    def update(self):
-        time.sleep(0.1)
-        self.show()
-
     def _openImage(self):
         self.file = []
         for i in range(12):
