@@ -21,14 +21,34 @@ BLACK = 1
 WHITE = -1
 NONE = 20
 
+class Threefold_Repetition:
+    def __init__(self):
+        self.queue = []
+        self.Qnum = 0
+        self.Qsize = 4
+        self.count = 0
+
+    def add(self, item):
+        self.queue.append(item)
+        self.Qnum += 1
+        if self.Qnum == self.Qsize:
+            self.Qnum -= 1
+            if item == self.queue.pop():
+                self.count += 1
+            else:
+                self.count = 0
+
+    def isTR(self):
+        return self.count == 10
+
 class Chess_Board:
     def __init__(self):
         # 初期化
         self.turn = WHITE   # 先手は白
         self._makePiece()
         self._makeBoaed()
-        self._makeDummy()
         self.lmove = 0
+        self.tr = Threefold_Repetition()
     
     def chenge_turn(self):
         # 手番を変える
@@ -95,6 +115,7 @@ class Chess_Board:
         if self.board[y][x] != 0:
             self.plist[self.board[y][x]].deactivate()
         self.board[y][x] = i
+        self.tr.add([i, x, y])
 
     def makeList(self):
         # チェックリストと動かせる駒のリストを作成する。
@@ -106,7 +127,7 @@ class Chess_Board:
         self.clist = []
         for i, p in enumerate(self.plist):
             if not p.isActivate():
-                # 駒が盤面に残っていないならスルー。
+                # その駒が盤面に残っていないならスルー。
                 self.clist.append([])
                 continue
             color = p.getColor()
@@ -217,6 +238,10 @@ class Chess_Board:
     def getPiece(self, x, y):
         # ボード(x, y)の駒のIDを返却。
         return self.board[y][x]
+
+    def isGameover(self):
+        if self.tr.isTR():
+            return 0
 
 if __name__=='__main__':
     test = Chess_Board()
