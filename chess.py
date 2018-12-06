@@ -107,11 +107,12 @@ class GraphicalChess(tk.Frame):
 
     # bind系のメソッド
 
-    def deactive(self):
+    def deactive(self, e):
         pass
 
     def start(self):
         self.button.configure(state='disable')
+        self.chess.reset()
         self.show()
         self.game()
 

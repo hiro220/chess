@@ -25,20 +25,15 @@ CONTINUE = 2
 
 class Threefold_Repetition:
     def __init__(self):
-        self.queue = []
-        self.Qnum = 0
-        self.Qsize = 4
+        self.queue = [0 for i in range(4)]
         self.count = 0
 
     def add(self, item):
         self.queue.append(item)
-        self.Qnum += 1
-        if self.Qnum == self.Qsize:
-            self.Qnum -= 1
-            if item == self.queue.pop():
-                self.count += 1
-            else:
-                self.count = 0
+        if item == self.queue.pop():
+            self.count += 1
+        else:
+            self.count = 0
 
     def isTR(self):
         return self.count == 10
@@ -46,6 +41,9 @@ class Threefold_Repetition:
 class Chess_Board:
     def __init__(self):
         # 初期化
+        self.reset()
+
+    def reset(self):
         self.turn = WHITE   # 先手は白
         self._makePiece()
         self._makeBoaed()
