@@ -20,6 +20,8 @@ W_KING = 11
 BLACK = 1
 WHITE = -1
 NONE = 20
+TR = 0
+CONTINUE = 2
 
 class Threefold_Repetition:
     def __init__(self):
@@ -239,9 +241,10 @@ class Chess_Board:
         # ボード(x, y)の駒のIDを返却。
         return self.board[y][x]
 
-    def isGameover(self):
+    def checkResult(self):
         if self.tr.isTR():
-            return 0
+            return TR
+        return CONTINUE
 
 if __name__=='__main__':
     test = Chess_Board()

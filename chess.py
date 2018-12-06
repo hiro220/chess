@@ -25,6 +25,9 @@ CC2 = "red"
 # 選択している駒があるマスの色
 SC = "blue"
 
+TR = 0
+CONTINUNE = 2
+
 class GraphicalChess(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
@@ -104,16 +107,25 @@ class GraphicalChess(tk.Frame):
 
     # bind系のメソッド
 
+    def deactive(self):
+        pass
+
     def start(self):
         self.button.configure(state='disable')
-        self.update()
+        self.show()
         self.game()
 
     def game(self):
-        self.chess.makeList()
-        self.showmPiece()
-        self.canvas.bind("<Button-1>", self._selectPiece)
-        self.msg.set("動かす駒を選択してください。")
+        result = self.chess.checkResult()
+        if result == TR:
+            self.msg.set("引き分け:千日手")
+            self.canvas.bind("<Button-1>", self.deactive)
+            self.button.configure(state='active')
+        else:
+            self.chess.makeList()
+            self.showmPiece()
+            self.canvas.bind("<Button-1>", self._selectPiece)
+            self.msg.set("動かす駒を選択してください。")
 
     def _clicked(self, e):
         self.x, self.y = e.x, e.y
