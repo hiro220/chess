@@ -30,7 +30,7 @@ class Threefold_Repetition:
 
     def add(self, item):
         self.queue.append(item)
-        if item == self.queue.pop():
+        if item == self.queue.pop(0):
             self.count += 1
         else:
             self.count = 0
@@ -109,33 +109,54 @@ class Chess_Board:
 
     def move(self, i, x, y):
         # iの駒を(x, y)に移動させる。
+        self._move(i, x, y)
+        self.tr.add([i, x, y])
+
+    def _move(self, i, x, y):
         lx, ly = self.getPosition(i)
         self.plist[i].move()
         self.board[ly][lx] = 0
         if self.board[y][x] != 0:
             self.plist[self.board[y][x]].deactivate()
         self.board[y][x] = i
-        self.tr.add([i, x, y])
 
     def makeList(self):
         # チェックリストと動かせる駒のリストを作成する。
-        self.makecList()
+        self.clist = self.makecList()
         self.makemList()
 
-    def makecList(self):
+    def rivalCheck(self, i, x, y):
+        lx, ly = self.getPosition(i)
+        lsti = self.board[y][x]
+        tmplist = self.makecList(rival=True)
+        if lsti != 0:
+            self.plist[lsti].activate()
+        self.board[y][x] = lsti
+        self.board[ly][lx] = i
+        rclist = []
+        for mas in tmplist:
+            rclist += mas
+        return rclist
+
+    def makecList(self, rival=False):
         # チェックをかけている駒と、かかっている場所のリストを作る
-        self.clist = []
+        tmplist = []
+        if rival:
+            turn = self.turn * (-1)
+        else:
+            turn = self.turn
         for i, p in enumerate(self.plist):
             if not p.isActivate():
                 # その駒が盤面に残っていないならスルー。
-                self.clist.append([])
+                tmplist.append([])
                 continue
             color = p.getColor()
             clist = []
             x, y = self.getPosition(i)
-            if color == self.turn:
+            if color == turn:
                 piece = p.getPiece()
                 piece = piece % 6   # pieceの値をすべてBLACKで考える。
+                """
                 if piece == B_ROOK: # ルークのとき
                     dif = [[1,0],[-1,0],[0,1],[0,-1]]
                     for a in dif:
@@ -152,7 +173,8 @@ class Chess_Board:
                     dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
                     for a in dif:
                         clist += self.recursionCheck(x, y, a[0], a[1])
-                elif piece == B_KING: # キングのとき
+                        """
+                if piece == B_KING: # キングのとき
                     dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
                     for a in dif:
                         clist += self.simpleCheck(x, y, a[0], a[1])
@@ -160,7 +182,16 @@ class Chess_Board:
                 elif piece == B_PAWN:
                     # ポーンは動きが例外
                     clist += self.pawnCheck(x, y)
-            self.clist.append(clist)
+                else:
+                    single, dif = p.movingPosition()
+                    for mas in dif:
+                        if single:
+                            clist += self.simpleCheck(x, y, mas[0], mas[1])
+                        else:
+                            clist += self.recursionCheck(x, y, mas[0], mas[1])
+
+            tmplist.append(clist)
+        return tmplist
             # あと、駒を動かしたことによるチェックも放置
 
     def pawnCheck(self, x, y):
@@ -172,10 +203,6 @@ class Chess_Board:
             num += 1
         for a in range(num):
             y += self.turn
-            if (0 <= x < BOARD_SIZE) and (0 <= y < BOARD_SIZE):
-                i = self.board[y][x]
-                if self.plist[i].getColor() == NONE:
-                    li.append([x, y])
             if a == 0:
                 for b in [1, -1]:
                     x1 = x + b
@@ -184,6 +211,12 @@ class Chess_Board:
                         color = self.plist[i].getColor()
                         if (color != self.turn) and (color != NONE):
                             li.append([x1, y])
+            if (0 <= x < BOARD_SIZE) and (0 <= y < BOARD_SIZE):
+                i = self.board[y][x]
+                if self.plist[i].getColor() == NONE:
+                    li.append([x, y])
+                else:
+                    break
         return li
 
     def recursionCheck(self, x, y, dx, dy):

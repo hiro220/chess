@@ -48,9 +48,29 @@ class Chess_Piece:
     
     def deactivate(self):
         self.active = False
+
+    def activate(self):
+        self.active = True
     
     def getPiece(self):
         return self.piece
 
     def getColor(self):
         return self.color
+
+    def movingPosition(self):
+        # それぞれの方向に対して1マスのみ効く駒ならsingleはTrue。どの方向に効くのかをリストにする。
+        # ただし、ポーンとキングに関しては返却しない
+        piece = self.piece % 6
+        single = False
+        dif = []
+        if piece == B_ROOK:
+            dif = [[1,0],[-1,0],[0,1],[0,-1]]
+        elif piece == B_KNIGHT:
+            single = True
+            dif = [[2,1],[2,-1],[1,2],[1,-2],[-1,2],[-1,-2],[-2,1],[-2,-1]]
+        elif piece == B_BISHOP:
+            dif = [[1,1],[1,-1],[-1,1],[-1,-1]]
+        elif piece == B_QUEEN:
+            dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
+        return single, dif
