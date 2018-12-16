@@ -42,6 +42,7 @@ class Chess_Board:
     def __init__(self):
         # 初期化
         self.reset()
+        self.searchKing()
 
     def reset(self):
         self.turn = WHITE   # 先手は白
@@ -53,6 +54,18 @@ class Chess_Board:
     def chenge_turn(self):
         # 手番を変える
         self.turn *= -1
+        self.searchKing()
+
+    def searchKing(self):
+        if self.turn == BLACK:
+            piece = B_KING
+        else:
+            piece = W_KING 
+        for i, p in enumerate(self.plist):
+            if p.getPiece() == piece:
+                x, y = self.getPosition(i)
+                self.kingPosition = [x, y]
+                return
 
     def _makePiece(self):
         # 使う駒のリストを作る
@@ -110,11 +123,11 @@ class Chess_Board:
     def move(self, i, x, y):
         # iの駒を(x, y)に移動させる。
         self._move(i, x, y)
+        self.plist[i].move()
         self.tr.add([i, x, y])
 
     def _move(self, i, x, y):
         lx, ly = self.getPosition(i)
-        self.plist[i].move()
         self.board[ly][lx] = 0
         if self.board[y][x] != 0:
             self.plist[self.board[y][x]].deactivate()
@@ -126,16 +139,21 @@ class Chess_Board:
         self.makemList()
 
     def rivalCheck(self, i, x, y):
-        lx, ly = self.getPosition(i)
-        lsti = self.board[y][x]
-        tmplist = self.makecList(rival=True)
-        if lsti != 0:
-            self.plist[lsti].activate()
-        self.board[y][x] = lsti
-        self.board[ly][lx] = i
+        lx, ly = self.getPosition(i) # iのボード位置を取得
+        lsti = self.board[y][x] # 移動させる駒の位置lstiを保持
+        self._move(i, x, y) # 実際に駒を移動させる
+        tmplist = self.makecList(rival=True) # 相手が駒で取ることができる位置のリストを取得
+        self.board[y][x] = lsti # 移動して上書きした駒情報を戻す。
+        self.board[ly][lx] = i # 移動元に駒を戻す。
+        # deactivateにした駒をactivateにする。
+        if self.board[y][x] != 0:
+            self.plist[self.board[y][x]].activate()
+        # plistの順番に対応したリストになっているtmplistを、ただの一重のリストにする。
         rclist = []
-        for mas in tmplist:
-            rclist += mas
+        for maslist in tmplist:
+            for mas in maslist:
+                if mas != []:
+                    rclist.append(mas)
         return rclist
 
     def makecList(self, rival=False):
@@ -147,7 +165,7 @@ class Chess_Board:
             turn = self.turn
         for i, p in enumerate(self.plist):
             if not p.isActivate():
-                # その駒が盤面に残っていないならスルー。
+                # その駒が盤面に残っていないなら空のリストを追加するだけ。
                 tmplist.append([])
                 continue
             color = p.getColor()
@@ -177,74 +195,133 @@ class Chess_Board:
                 if piece == B_KING: # キングのとき
                     dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
                     for a in dif:
-                        clist += self.simpleCheck(x, y, a[0], a[1])
+                        clist += self.simpleCheck(x, y, a[0], a[1], rival)
                         # キャスリングはとりあえず放置
                 elif piece == B_PAWN:
                     # ポーンは動きが例外
-                    clist += self.pawnCheck(x, y)
+                    clist += self.pawnCheck(x, y, rival)
                 else:
-                    single, dif = p.movingPosition()
+                    single, dif = p.movingPosition() # 現在確認している駒の動き方を取得
                     for mas in dif:
                         if single:
-                            clist += self.simpleCheck(x, y, mas[0], mas[1])
+                            clist += self.simpleCheck(x, y, mas[0], mas[1], rival)
                         else:
-                            clist += self.recursionCheck(x, y, mas[0], mas[1])
+                            clist += self.recursionCheck(i, x, y, mas[0], mas[1], rival)
 
             tmplist.append(clist)
         return tmplist
             # あと、駒を動かしたことによるチェックも放置
 
-    def pawnCheck(self, x, y):
+    def pawnCheck(self, x, y, rival):
         # ポーン用のチェック探索
-        i = self.board[y][x]
+        index = self.board[y][x] # ポーンの位置をindexに格納
         li = []
         num = 1
-        if not self.plist[i].ismove():
+        if (not self.plist[index].ismove()) and (not rival):
+            # ポーンが動いていない、かつその手番のチェック
             num += 1
         for a in range(num):
-            y += self.turn
+            # チェック対象となるターンを設定
+            if rival:
+                turn = self.turn * (-1)
+            else:
+                turn = self.turn
+            y += turn
+            # 斜め前に駒がある場合移動可能
             if a == 0:
                 for b in [1, -1]:
                     x1 = x + b
                     if (0 <= x1 < BOARD_SIZE) and (0 <= y < BOARD_SIZE):
                         i = self.board[y][x1]
                         color = self.plist[i].getColor()
-                        if (color != self.turn) and (color != NONE):
-                            li.append([x1, y])
-            if (0 <= x < BOARD_SIZE) and (0 <= y < BOARD_SIZE):
+                        if ((color != turn) and (color != NONE)) or rival:
+                            # 移動先に相手の駒がある、もしくは確認用チェック
+                            if not rival:
+                                # 確認用でない場合
+                                rclist = self.rivalCheck(index, x, y)
+                                print(self.kingPosition in rclist, [self.kingPosition[0],self.kingPosition[1]], rclist)
+                                if self.kingPosition not in rclist:
+                                    # キングにチェックがかかっていない
+                                    li.append([x1, y])
+                                else:
+                                    # キングにチェックがかかっている
+                                    li.append([])
+                            else:
+                                # 確認用
+                                li.append([x1, y])
+            # 前方移動
+            if (0 <= x < BOARD_SIZE) and (0 <= y < BOARD_SIZE) and (not rival):
                 i = self.board[y][x]
-                if self.plist[i].getColor() == NONE:
-                    li.append([x, y])
+                if (self.plist[i].getColor() == NONE):
+                    # 移動先に駒がない、かつ確認用
+                    rclist = self.rivalCheck(index, x, y)
+                    if self.kingPosition not in rclist:
+                        # キングにチェックがかかっていない
+                        li.append([x, y])
+                    else:
+                        # キングにチェックがかかっている
+                        li.append([])
                 else:
+                    # 移動先にどちらかの駒がある
+                    li.append([])
                     break
         return li
 
-    def recursionCheck(self, x, y, dx, dy):
+    def recursionCheck(self, index, x, y, dx, dy, rival):
         # 再帰的に呼び出してチェックをかけられるか調べる。
         x += dx
         y += dy
+        if rival:
+            turn = self.turn * (-1)
+        else:
+            turn = self.turn
         if (0 <= x < BOARD_SIZE) and (0 <= y < BOARD_SIZE):
             i = self.board[y][x]
             color = self.plist[i].getColor()
-            if color == NONE:
-                return [[x, y]] + self.recursionCheck(x, y, dx, dy)
-            elif color == self.turn:
+            if color == turn:
+                # 移動先に自分の駒がある
                 return []
+            elif not rival:
+                # 確認用でない
+                rclist = self.rivalCheck(index, x, y)
+                if color == NONE:
+                    if self.kingPosition not in rclist:
+                        return [[x, y]] + self.recursionCheck(index, x, y, dx, dy, rival)
+                    else:
+                        return self.recursionCheck(index, x, y, dx, dy, rival)
+                else:
+                    if self.kingPosition not in rclist:
+                        return [[x, y]]
+                    else:
+                        return []
             else:
-                return [[x, y]]
+                if color == NONE:
+                    return [[x, y]] + self.recursionCheck(index, x, y, dx, dy, rival)
+                else:
+                    return [[x, y]]
         return []
 
-    def simpleCheck(self, x, y, dx, dy):
+    def simpleCheck(self, x, y, dx, dy, rival):
         # 指定したマスにチェックをかけられるか調べる。
+        index = self.board[y][x]
         x += dx
         y += dy
+        if rival:
+            turn = self.turn * (-1)
+        else:
+            turn = self.turn
         if (0 <= x < BOARD_SIZE) and (0 <= y < BOARD_SIZE):
             i = self.board[y][x]
             color = self.plist[i].getColor()
-            if color != self.turn:
-                return [[x, y]]
-            else:
-                return []
+            if color != turn:
+                if not rival:
+                    rclist = self.rivalCheck(index, x, y)
+                    if self.kingPosition not in rclist:
+                        return [[x, y]]
+                    else:
+                        return []
+                else:
+                    return [[x, y]]
         return []
 
     def incList(self, x, y):
