@@ -54,22 +54,6 @@ class Chess_Board:
         self.lmove = 0
         self.tr = Threefold_Repetition()
     
-    def chenge_turn(self):
-        # 手番を変える
-        self.turn *= -1
-        self.searchKing()
-
-    def searchKing(self):
-        if self.turn == BLACK:
-            piece = B_KING
-        else:
-            piece = W_KING 
-        for i, p in enumerate(self.plist):
-            if p.getPiece() == piece:
-                x, y = self.getPosition(i)
-                self.kingPosition = [x, y]
-                return
-
     def _makePiece(self):
         # 使う駒のリストを作る
         self.plist = []
@@ -99,9 +83,21 @@ class Chess_Board:
             self.board[BOARD_SIZE-1][i] = i + 1 + BOARD_SIZE * 3
             self.board[BOARD_SIZE-2][i] = i + 1 + BOARD_SIZE * 2
 
-    def _makeDummy(self):
-        # ボードをもう一つ計算用に用意する。
-        self.dummy = copy.deepcopy(self.board)
+    def chenge_turn(self):
+        # 手番を変える
+        self.turn *= -1
+        self.searchKing()
+
+    def searchKing(self):
+        if self.turn == BLACK:
+            piece = B_KING
+        else:
+            piece = W_KING 
+        for i, p in enumerate(self.plist):
+            if p.getPiece() == piece:
+                x, y = self.getPosition(i)
+                self.kingPosition = [x, y]
+                return
 
     def getPosition(self, i):
         # 引数で指定したIDの駒があるマスを返却する。
@@ -109,6 +105,10 @@ class Chess_Board:
             for x, b in enumerate(a):
                 if b == i:
                     return x, y
+
+    def getPiece(self, x, y):
+        # ボード(x, y)の駒のIDを返却。
+        return self.board[y][x]
 
     def promotion(self, i, piece):
         # 引数で指定したIDの駒をpieceにする。
@@ -123,41 +123,31 @@ class Chess_Board:
                 li[y][x] = self.plist[i].getPiece()
         return li
 
-    def move(self, i, x, y):
-        # iの駒を(x, y)に移動させる。
-        self._move(i, x, y)
-        self.plist[i].move()
-        self.tr.add([i, x, y])
-
     def _move(self, i, x, y):
+        # iの駒を(x, y)に移動させる。(仮)
         lx, ly = self.getPosition(i)
         self.board[ly][lx] = 0
         if self.board[y][x] != 0:
             self.plist[self.board[y][x]].deactivate()
         self.board[y][x] = i
 
+    def move(self, i, x, y):
+        # 実質の駒移動
+        self._move(i, x, y)
+        self.plist[i].move()
+        self.tr.add([i, x, y])
+
     def makeList(self):
         # チェックリストと動かせる駒のリストを作成する。
         self.clist = self.makecList()
         self.makemList()
 
-    def rivalCheck(self, i, x, y):
-        lx, ly = self.getPosition(i) # iのボード位置を取得
-        lsti = self.board[y][x] # 移動させる駒の位置lstiを保持
-        self._move(i, x, y) # 実際に駒を移動させる
-        tmplist = self.makecList(rival=True) # 相手が駒で取ることができる位置のリストを取得
-        self.board[y][x] = lsti # 移動して上書きした駒情報を戻す。
-        self.board[ly][lx] = i # 移動元に駒を戻す。
-        # deactivateにした駒をactivateにする。
-        if self.board[y][x] != 0:
-            self.plist[self.board[y][x]].activate()
-        # plistの順番に対応したリストになっているtmplistを、ただの一重のリストにする。
-        rclist = []
-        for maslist in tmplist:
-            for mas in maslist:
-                if mas != []:
-                    rclist.append(mas)
-        return rclist
+    def makemList(self):
+        # 動かせる駒のリストを作る。
+        self.mlist = []
+        for i, p in enumerate(self.plist):
+            if len(self.clist[i]) != 0:
+                self.mlist.append(i)
 
     def makecList(self, rival=False):
         # チェックをかけている駒と、かかっている場所のリストを作る
@@ -178,7 +168,7 @@ class Chess_Board:
                 piece = p.getPiece()
                 piece = piece % 6   # pieceの値をすべてBLACKで考える。
                 if piece == B_KING: # キングのとき
-                    dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]       # キングが動いたときにキングポジションが変わるためチェック逃れが発生
+                    dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
                     for a in dif:
                         clist += self.simpleCheck(x, y, a[0], a[1], rival)
                         # キャスリングはとりあえず放置
@@ -197,7 +187,7 @@ class Chess_Board:
         return tmplist
             # あと、駒を動かしたことによるチェックも放置
 
-    def pawnCheck(self, x, y, rival): # ポーン用チェックにキングへのチェック確認不具合。
+    def pawnCheck(self, x, y, rival):
         # ポーン用のチェック探索
         index = self.board[y][x] # ポーンの位置をindexに格納
         li = []
@@ -309,6 +299,24 @@ class Chess_Board:
                     return [[x, y]]
         return []
 
+    def rivalCheck(self, i, x, y):
+        lx, ly = self.getPosition(i) # iのボード位置を取得
+        lsti = self.board[y][x] # 移動させる駒の位置lstiを保持
+        self._move(i, x, y) # 実際に駒を移動させる
+        tmplist = self.makecList(rival=True) # 相手が駒で取ることができる位置のリストを取得
+        self.board[y][x] = lsti # 移動して上書きした駒情報を戻す。
+        self.board[ly][lx] = i # 移動元に駒を戻す。
+        # deactivateにした駒をactivateにする。
+        if self.board[y][x] != 0:
+            self.plist[self.board[y][x]].activate()
+        # plistの順番に対応したリストになっているtmplistを、ただの一重のリストにする。
+        rclist = []
+        for maslist in tmplist:
+            for mas in maslist:
+                if mas != []:
+                    rclist.append(mas)
+        return rclist
+
     def incList(self, x, y):
         # 指定したマスに駒がチェックをかけているか
         for a in self.clist:
@@ -316,23 +324,12 @@ class Chess_Board:
                 return True
         return False
 
-    def checked(self, i, x, y):
-        return [x, y] in self.clist[i]
-
-    def makemList(self):
-        # 動かせる駒のリストを作る。
-        self.mlist = []
-        for i, p in enumerate(self.plist):
-            if len(self.clist[i]) != 0:
-                self.mlist.append(i)
-
     def inmList(self, x, y):
         # 指定したマスの駒が動けるか
         return self.board[y][x] in self.mlist
 
-    def getPiece(self, x, y):
-        # ボード(x, y)の駒のIDを返却。
-        return self.board[y][x]
+    def checked(self, i, x, y):
+        return [x, y] in self.clist[i]
 
     def checkResult(self):
         if self.tr.isTR():
@@ -350,7 +347,6 @@ if __name__=='__main__':
     test.makeList()
     test.move(1, 4,4)
     print(test.board)
-    print(test.dummy)
     print(test.mlist)
     print(test.clist)
     print(test.incList(0,5))
