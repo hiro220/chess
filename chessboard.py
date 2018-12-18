@@ -24,11 +24,13 @@ TR = 0
 CONTINUE = 2
 
 class Threefold_Repetition:
+    """千日手に対する処理を行うクラス"""
     def __init__(self):
         self.queue = [0 for i in range(4)]
         self.count = 0
 
     def add(self, item):
+        # 引数itemに行動を入力する。
         self.queue.append(item)
         if item == self.queue.pop(0):
             self.count += 1
@@ -36,6 +38,7 @@ class Threefold_Repetition:
             self.count = 0
 
     def isTR(self):
+        # addの直後に呼ぶ。千日手ならTrueが返る。
         return self.count == 10
 
 class Chess_Board:
