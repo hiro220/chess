@@ -174,26 +174,8 @@ class Chess_Board:
             if color == turn:
                 piece = p.getPiece()
                 piece = piece % 6   # pieceの値をすべてBLACKで考える。
-                """
-                if piece == B_ROOK: # ルークのとき
-                    dif = [[1,0],[-1,0],[0,1],[0,-1]]
-                    for a in dif:
-                        clist += self.recursionCheck(x, y, a[0], a[1])
-                elif piece == B_KNIGHT: # ナイトのとき
-                    dif = [[2,1],[2,-1],[1,2],[1,-2],[-1,2],[-1,-2],[-2,1],[-2,-1]]
-                    for a in dif:
-                        clist += self.simpleCheck(x, y, a[0], a[1])
-                elif piece == B_BISHOP: # ビショップのとき
-                    dif = [[1,1],[1,-1],[-1,1],[-1,-1]]
-                    for a in dif:
-                        clist += self.recursionCheck(x, y, a[0], a[1])
-                elif piece == B_QUEEN: # クイーンのとき
-                    dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
-                    for a in dif:
-                        clist += self.recursionCheck(x, y, a[0], a[1])
-                        """
                 if piece == B_KING: # キングのとき
-                    dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
+                    dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]       # キングが動いたときにキングポジションが変わるためチェック逃れが発生
                     for a in dif:
                         clist += self.simpleCheck(x, y, a[0], a[1], rival)
                         # キャスリングはとりあえず放置
@@ -212,7 +194,7 @@ class Chess_Board:
         return tmplist
             # あと、駒を動かしたことによるチェックも放置
 
-    def pawnCheck(self, x, y, rival):
+    def pawnCheck(self, x, y, rival): # ポーン用チェックにキングへのチェック確認不具合。
         # ポーン用のチェック探索
         index = self.board[y][x] # ポーンの位置をindexに格納
         li = []
@@ -239,16 +221,15 @@ class Chess_Board:
                             if not rival:
                                 # 確認用でない場合
                                 rclist = self.rivalCheck(index, x, y)
-                                print(self.kingPosition in rclist, [self.kingPosition[0],self.kingPosition[1]], rclist)
                                 if self.kingPosition not in rclist:
                                     # キングにチェックがかかっていない
-                                    li.append([x1, y])
+                                    li += [[x1, y]]
                                 else:
                                     # キングにチェックがかかっている
-                                    li.append([])
+                                    li += []
                             else:
                                 # 確認用
-                                li.append([x1, y])
+                                li += [[x1, y]]
             # 前方移動
             if (0 <= x < BOARD_SIZE) and (0 <= y < BOARD_SIZE) and (not rival):
                 i = self.board[y][x]
@@ -257,13 +238,13 @@ class Chess_Board:
                     rclist = self.rivalCheck(index, x, y)
                     if self.kingPosition not in rclist:
                         # キングにチェックがかかっていない
-                        li.append([x, y])
+                        li += [[x, y]]
                     else:
                         # キングにチェックがかかっている
-                        li.append([])
+                        li += []
                 else:
                     # 移動先にどちらかの駒がある
-                    li.append([])
+                    li += []
                     break
         return li
 
@@ -308,6 +289,7 @@ class Chess_Board:
         y += dy
         if rival:
             turn = self.turn * (-1)
+            self.searchKing()
         else:
             turn = self.turn
         if (0 <= x < BOARD_SIZE) and (0 <= y < BOARD_SIZE):
@@ -352,6 +334,8 @@ class Chess_Board:
     def checkResult(self):
         if self.tr.isTR():
             return TR
+        elif len(self.mlist) == 0:
+            return self.turn
         return CONTINUE
 
 if __name__=='__main__':

@@ -26,6 +26,8 @@ CC2 = "red"
 SC = "blue"
 
 TR = 0
+BLACK = 1
+WHITE = -1
 CONTINUNE = 2
 
 class GraphicalChess(tk.Frame):
@@ -117,16 +119,25 @@ class GraphicalChess(tk.Frame):
         self.game()
 
     def game(self):
+        self.chess.makeList()
         result = self.chess.checkResult()
-        if result == TR:
-            self.msg.set("引き分け:千日手")
-            self.canvas.bind("<Button-1>", self.deactive)
-            self.button.configure(state='active')
-        else:
-            self.chess.makeList()
+        if result == CONTINUNE:
             self.showmPiece()
             self.canvas.bind("<Button-1>", self._selectPiece)
             self.msg.set("動かす駒を選択してください。")
+            return
+        self.canvas.bind("<Button-1>", self.deactive)
+        self.button.configure(state='active')
+        if result == TR:
+            self.msg.set("引き分け:千日手")
+        else:
+            text = "チェックメイト！　"
+            if result == BLACK:
+                text += "白"
+            else:
+                text += "黒"
+            text += "の勝ち！"
+            self.msg.set(text)
 
     def _clicked(self, e):
         self.x, self.y = e.x, e.y
