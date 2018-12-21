@@ -20,10 +20,11 @@ NONE = 20
 
 class Chess_Piece:
     """駒の種類を保存するクラス。駒の種類、生きた駒かは変更可能。"""
-    def __init__(self, piece):
+    def __init__(self, piece, activate=True):
         self.piece = piece
         self.color = self._getcolor(piece)
         self.moved = False
+        self.active = activate
 
     def _getcolor(self, piece):
         if piece == NONE:
@@ -41,9 +42,35 @@ class Chess_Piece:
     
     def ismove(self):
         return self.moved
+
+    def isActivate(self):
+        return self.active
+    
+    def deactivate(self):
+        self.active = False
+
+    def activate(self):
+        self.active = True
     
     def getPiece(self):
         return self.piece
 
     def getColor(self):
         return self.color
+
+    def movingPosition(self):
+        # それぞれの方向に対して1マスのみ効く駒ならsingleはTrue。どの方向に効くのかをリストにする。
+        # ただし、ポーンとキングに関しては返却しない
+        piece = self.piece % 6
+        single = False
+        dif = []
+        if piece == B_ROOK:
+            dif = [[1,0],[-1,0],[0,1],[0,-1]]
+        elif piece == B_KNIGHT:
+            single = True
+            dif = [[2,1],[2,-1],[1,2],[1,-2],[-1,2],[-1,-2],[-2,1],[-2,-1]]
+        elif piece == B_BISHOP:
+            dif = [[1,1],[1,-1],[-1,1],[-1,-1]]
+        elif piece == B_QUEEN:
+            dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
+        return single, dif

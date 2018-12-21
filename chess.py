@@ -22,6 +22,13 @@ MC = "gray"
 # 移動可能なマスの色
 CC1 = "red"
 CC2 = "red"
+# 選択している駒があるマスの色
+SC = "blue"
+
+TR = 0
+BLACK = 1
+WHITE = -1
+CONTINUNE = 2
 
 class GraphicalChess(tk.Frame):
     def __init__(self, master=None):
@@ -99,33 +106,64 @@ class GraphicalChess(tk.Frame):
         self.count = 0
         self.x, self.y = -1, -1
 
-    def _board_position(self, x, y):
-        # キャンバス上での座標をボードのマス基準の座標に変換する。
-        x = (x - F["x1"]) // MAS_SIZE
-        y = (y - F["y1"]) // MAS_SIZE
-        return int(x), int(y)
+
+    # bind系のメソッド
+
+    def _clicked(self, e):
+        pass
 
     def start(self):
         self.button.configure(state='disable')
-        self.update()
+        self.chess.reset()
+        self.show()
         self.game()
 
     def game(self):
         self.chess.makeList()
-        self.showmPiece()
-        #x, y = self.getMouse()
-        #self.showCheck(x, y)
-        #self.game()
+        result = self.chess.checkResult()
+        if result == CONTINUNE:
+            self.showmPiece()
+            self.canvas.bind("<Button-1>", self._selectPiece)
+            self.msg.set("動かす駒を選択してください。")
+            return
+        self.canvas.bind("<Button-1>", self._clicked)
+        self.button.configure(state='active')
+        if result == TR:
+            self.msg.set("引き分け:千日手")
+        else:
+            text = "チェックメイト！　"
+            if result == BLACK:
+                text += "白"
+            else:
+                text += "黒"
+            text += "の勝ち！"
+            self.msg.set(text)
 
-    def _canvas_position(self, x, y):
-        # マス基準の座標をキャンバス上におけるそのマスの中心値に変換する。
-        x = F["x1"] + MAS_SIZE/2 + MAS_SIZE * x
-        y = F["y1"] + MAS_SIZE/2 + MAS_SIZE * y
-        return x, y
+    def _selectPiece(self, e):
+        if not self.isOnboard(e.x, e.y):
+            return
+        x, y = self._board_position(e.x, e.y)
+        if self.chess.inmList(x, y):
+            self.showCheck(x, y)
+            self.x, self.y = x, y
+            self._set_bgcolor(y, x, SC)
+            self.canvas.bind("<Button-1>", self._selectPosition)
+            self.msg.set("移動先を選択してください。")
+        else:
+            self.msg.set("Caution:動かせない駒です。")
 
-    def _clicked(self, e):
-        self.x, self.y = e.x, e.y
-        print(e.x, e.y)
+    def _selectPosition(self, e):
+        if not self.isOnboard(e.x, e.y):
+            return
+        x, y = self._board_position(e.x, e.y)
+        if self.chess.checked(self.chess.getPiece(self.x, self.y), x, y):
+            self.chess.move(self.chess.getPiece(self.x, self.y), x, y)
+            self.x, self.y = x, y
+            self.show()
+            self.chess.chenge_turn()
+            self.game()
+        else:
+            self.msg.set("Caution:そのマスには動けません。")
 
     def _moved(self, e):
         # マウスが動いたときの処理
@@ -137,6 +175,8 @@ class GraphicalChess(tk.Frame):
             # マウスカーソル上のマスの色を変える。
             self.lmouse = [x, y, self.canvas.itemcget(self.mas[y][x], "fill")]
             self._setbgcolor(y, x, MC)
+    
+    # ここまでbind系
 
     def _set_bgcolor(self, y, x, color):
         # (x, y)のマスの色をcolorにする。マウスカーソル上のマスだったなら、保存している色を更新する。
@@ -148,9 +188,20 @@ class GraphicalChess(tk.Frame):
         # (x, y)のマスの色をcolorにする。
         self.canvas.itemconfigure(self.mas[y][x], fill=color)
 
-    def update(self):
-        time.sleep(0.1)
-        self.show()
+    def isOnboard(self, x, y):
+        return (F["x1"] <= x <= F["x2"]) and (F["y1"] <= y <= F["y2"])
+
+    def _canvas_position(self, x, y):
+        # マス基準の座標をキャンバス上におけるそのマスの中心値に変換する。
+        x = F["x1"] + MAS_SIZE/2 + MAS_SIZE * x
+        y = F["y1"] + MAS_SIZE/2 + MAS_SIZE * y
+        return x, y
+
+    def _board_position(self, x, y):
+        # キャンバス上での座標をボードのマス基準の座標に変換する。
+        x = (x - F["x1"]) // MAS_SIZE
+        y = (y - F["y1"]) // MAS_SIZE
+        return int(x), int(y)
 
     def _openImage(self):
         self.file = []
@@ -162,9 +213,9 @@ class GraphicalChess(tk.Frame):
         for y in range(BOARD_SIZE):
             for x in range(BOARD_SIZE):
                 if (x+y)%2 == 0:
-                    self._setbgcolor(y, x, BG1)
+                    self._set_bgcolor(y, x, BG1)
                 else:
-                    self._setbgcolor(y, x, BG2)
+                    self._set_bgcolor(y, x, BG2)
 
     def showmPiece(self):
         for y in range(BOARD_SIZE):
