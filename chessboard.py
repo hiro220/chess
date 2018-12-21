@@ -39,7 +39,7 @@ class Threefold_Repetition:
 
     def isTR(self):
         # addの直後に呼ぶ。千日手ならTrueが返る。
-        return self.count == 10
+        return self.count == 6
 
 class Chess_Board:
     def __init__(self):
