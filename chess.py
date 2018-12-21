@@ -109,7 +109,7 @@ class GraphicalChess(tk.Frame):
 
     # bind系のメソッド
 
-    def deactive(self, e):
+    def _clicked(self, e):
         pass
 
     def start(self):
@@ -126,7 +126,7 @@ class GraphicalChess(tk.Frame):
             self.canvas.bind("<Button-1>", self._selectPiece)
             self.msg.set("動かす駒を選択してください。")
             return
-        self.canvas.bind("<Button-1>", self.deactive)
+        self.canvas.bind("<Button-1>", self._clicked)
         self.button.configure(state='active')
         if result == TR:
             self.msg.set("引き分け:千日手")
@@ -139,11 +139,9 @@ class GraphicalChess(tk.Frame):
             text += "の勝ち！"
             self.msg.set(text)
 
-    def _clicked(self, e):
-        self.x, self.y = e.x, e.y
-        print(e.x, e.y)
-
     def _selectPiece(self, e):
+        if not self.isOnboard(e.x, e.y):
+            return
         x, y = self._board_position(e.x, e.y)
         if self.chess.inmList(x, y):
             self.showCheck(x, y)
@@ -155,6 +153,8 @@ class GraphicalChess(tk.Frame):
             self.msg.set("Caution:動かせない駒です。")
 
     def _selectPosition(self, e):
+        if not self.isOnboard(e.x, e.y):
+            return
         x, y = self._board_position(e.x, e.y)
         if self.chess.checked(self.chess.getPiece(self.x, self.y), x, y):
             self.chess.move(self.chess.getPiece(self.x, self.y), x, y)
@@ -187,6 +187,9 @@ class GraphicalChess(tk.Frame):
     def _setbgcolor(self, y, x, color):
         # (x, y)のマスの色をcolorにする。
         self.canvas.itemconfigure(self.mas[y][x], fill=color)
+
+    def isOnboard(self, x, y):
+        return (F["x1"] <= x <= F["x2"]) and (F["y1"] <= y <= F["y2"])
 
     def _canvas_position(self, x, y):
         # マス基準の座標をキャンバス上におけるそのマスの中心値に変換する。

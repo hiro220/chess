@@ -86,7 +86,7 @@ class Chess_Board:
     def chenge_turn(self):
         # 手番を変える
         self.turn *= -1
-        self.searchKing()
+        #self.searchKing()
 
     def searchKing(self):
         if self.turn == BLACK:
@@ -133,9 +133,19 @@ class Chess_Board:
 
     def move(self, i, x, y):
         # 実質の駒移動
+        x1, y1 = self.getPosition(i)
         self._move(i, x, y)
         self.plist[i].move()
         self.tr.add([i, x, y])
+        if self.plist[i].getPiece() % 6 == B_KING: # i がキング
+            # caslingのときの処理
+            if not (-1 <= x-x1 <= 1):
+                if x > x1:
+                    self._move(i+3, x-1, y)
+                    self.plist[i+3].move()
+                else:
+                    self._move(i-4, x+1, y)
+                    self.plist[i-4].move()
 
     def makeList(self):
         # チェックリストと動かせる駒のリストを作成する。
@@ -171,6 +181,7 @@ class Chess_Board:
                     dif = [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]
                     for a in dif:
                         clist += self.simpleCheck(x, y, a[0], a[1], rival)
+                        clist += self.casling(rival)
                         # キャスリングはとりあえず放置
                 elif piece == B_PAWN:
                     # ポーンは動きが例外
@@ -213,7 +224,7 @@ class Chess_Board:
                             # 移動先に相手の駒がある、もしくは確認用チェック
                             if not rival:
                                 # 確認用でない場合
-                                rclist = self.rivalCheck(index, x, y)
+                                rclist = self.rivalCheck(index, x1, y)
                                 if self.kingPosition not in rclist:
                                     # キングにチェックがかかっていない
                                     li += [[x1, y]]
@@ -247,6 +258,7 @@ class Chess_Board:
         y += dy
         if rival:
             turn = self.turn * (-1)
+            self.searchKing()
         else:
             turn = self.turn
         if (0 <= x < BOARD_SIZE) and (0 <= y < BOARD_SIZE):
@@ -298,6 +310,43 @@ class Chess_Board:
                 else:
                     return [[x, y]]
         return []
+
+    def casling(self, rival):
+        if rival:
+            return []
+        self.searchKing()
+        x, y = self.kingPosition[0], self.kingPosition[1]
+        index = self.getPiece(x, y)
+        li = []
+        if self.plist[index].ismove(): # キングが動いているか
+            return []
+        # 右方探索
+        flag = True
+        if not self.plist[index+3].ismove(): # キング方向のルークが動いていないか
+            for i in range(2):
+                if len(self.simpleCheck(x, y, 1+i, 0, rival)) == 0:
+                    flag = False
+                    break
+                rclist = self.rivalCheck(index, x+i+1, y)
+                if [x, y] in rclist:
+                    flag = False
+                    break
+            if flag:
+                li.append([x+2, y])
+        # 左方探索
+        flag = True
+        if not self.plist[index-4].ismove(): # クイーン方向のルークが動いていないか
+            for i in range(3):
+                if len(self.simpleCheck(x, y, -1-i, 0, rival)) == 0:
+                    flag = False
+                    break
+                rclist = self.rivalCheck(index, x-i-1, y)
+                if [x, y] in rclist:
+                    flag = False
+                    break
+            if flag:
+                li.append([x-3, y])
+        return li
 
     def rivalCheck(self, i, x, y):
         lx, ly = self.getPosition(i) # iのボード位置を取得
