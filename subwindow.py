@@ -52,7 +52,7 @@ class Promotion(tk.Toplevel):
         self.select = 'rook'
 
     def knight(self):
-        self.select = 'kngiht'
+        self.select = 'knight'
     
     def bishop(self):
         self.select = 'bishop'
