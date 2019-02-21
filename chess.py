@@ -4,7 +4,7 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 from chessboard import Chess_Board
-import time
+from subwindow import Promotion
 
 # マスのサイズ
 MAS_SIZE = 50
@@ -37,6 +37,7 @@ class GraphicalChess(tk.Frame):
         master.geometry("+100+40")
         self.pack()
         self._init()
+        #self.sub_window()
 
     def _init(self):
         # チェスを処理するためのクラスを呼ぶ
@@ -160,8 +161,12 @@ class GraphicalChess(tk.Frame):
             self.chess.move(self.chess.getPiece(self.x, self.y), x, y)
             self.x, self.y = x, y
             self.show()
-            self.chess.chenge_turn()
-            self.game()
+            if self.chess.isPromotion(x, y):
+                self.msg.set("Promotion! 駒を選択してください。")
+                self.sub_window()
+            else:
+                self.chess.chenge_turn()
+                self.game()
         else:
             self.msg.set("Caution:そのマスには動けません。")
 
@@ -263,7 +268,19 @@ class GraphicalChess(tk.Frame):
         """リストの要素をすべて消す。"""
         self.list_box.delete(0, tk.END)
 
+    def sub_window(self):
+        self.subwin = Promotion()
+        self.subwin.bind("<Motion>", self.promotion)
 
+    def promotion(self, e):
+        if self.subwin.isSelect():
+            piece = self.subwin.select  # サブウィンドウで選んだ駒を得ている
+            i = self.chess.getPiece(self.x, self.y)
+            self.subwin.destroy()
+            self.chess.promotion(i, piece)
+            self.show()
+            self.chess.chenge_turn()
+            self.game()
 
 if __name__=='__main__':
     root = tk.Tk()

@@ -111,7 +111,17 @@ class Chess_Board:
         return self.board[y][x]
 
     def promotion(self, i, piece):
-        # 引数で指定したIDの駒をpieceにする。
+        # 引数で指定したIDの駒をpieceにする。"
+        if piece == "rook":
+            piece = B_ROOK
+        if piece == "bishop":
+            piece = B_BISHOP
+        if piece == "knight":
+            piece = B_KNIGHT
+        if piece == "queen":
+            piece = B_QUEEN
+        if self.turn == WHITE:
+            piece += 6
         self.plist[i].setPiece(piece)
 
     def getpList(self):
@@ -387,6 +397,13 @@ class Chess_Board:
             return self.turn
         return CONTINUE
 
+    def isPromotion(self, x, y):
+        i = self.board[y][x]
+        if self.plist[i].getPiece() % 6 == B_PAWN:
+            y += self.turn
+            return not (0 <= y < BOARD_SIZE)
+        return False
+        
 if __name__=='__main__':
     test = Chess_Board()
     for a in test.board:
