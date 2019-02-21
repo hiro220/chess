@@ -23,6 +23,21 @@ NONE = 20
 TR = 0
 CONTINUE = 2
 
+class Log:
+    def __init__(self):
+        self.log = []
+
+    def add(self, i, lx, ly, x, y):
+        self.log.insert(0, [i, lx, ly, x, y])
+
+    def get(self):
+        if self.log:
+            return self.log[0]
+
+    def clear(self):
+        self.log.clear()
+
+
 class Threefold_Repetition:
     """千日手に対する処理を行うクラス"""
     def __init__(self):
@@ -46,6 +61,7 @@ class Chess_Board:
         # 初期化
         self.reset()
         self.searchKing()
+        self.log = Log()
 
     def reset(self):
         self.turn = WHITE   # 先手は白
@@ -100,7 +116,8 @@ class Chess_Board:
                 return
 
     def getPosition(self, i):
-        # 引数で指定したIDの駒があるマスを返却する。
+        """ 引数で指定したIDの駒があるマスを返却する。
+        return x, y"""
         for y, a in enumerate(self.board):
             for x, b in enumerate(a):
                 if b == i:
@@ -144,9 +161,11 @@ class Chess_Board:
     def move(self, i, x, y):
         # 実質の駒移動
         x1, y1 = self.getPosition(i)
+        self.enpassant(i, x, y)
         self._move(i, x, y)
         self.plist[i].move()
         self.tr.add([i, x, y])
+        self.log.add(i, x1, y1, x, y)
         if self.plist[i].getPiece() % 6 == B_KING: # i がキング
             # caslingのときの処理
             if not (-1 <= x-x1 <= 1):
@@ -156,6 +175,20 @@ class Chess_Board:
                 else:
                     self._move(i-4, x+1, y)
                     self.plist[i-4].move()
+
+    def enpassant(self, i, x, y):
+        if not self.plist[i].getPiece() % 6 == B_PAWN:
+            return False
+        lx, ly = self.getPosition(i)
+        if x - lx == 0:
+            return False
+        if self.board[y][x] == 0:
+            pre = self.log.get()
+            i, prex, prey = pre[0], pre[3], pre[4]
+            self.plist[i].deactivate()
+            self.board[prey][prex] = 0
+            return True
+        return False
 
     def makeList(self):
         # チェックリストと動かせる駒のリストを作成する。
@@ -213,6 +246,7 @@ class Chess_Board:
         index = self.board[y][x] # ポーンの位置をindexに格納
         li = []
         num = 1
+        li += self.enpassantCheck(x, y)
         if (not self.plist[index].ismove()) and (not rival):
             # ポーンが動いていない、かつその手番のチェック
             num += 1
@@ -238,9 +272,6 @@ class Chess_Board:
                                 if self.kingPosition not in rclist:
                                     # キングにチェックがかかっていない
                                     li += [[x1, y]]
-                                else:
-                                    # キングにチェックがかかっている
-                                    li += []
                             else:
                                 # 確認用
                                 li += [[x1, y]]
@@ -253,13 +284,23 @@ class Chess_Board:
                     if self.kingPosition not in rclist:
                         # キングにチェックがかかっていない
                         li += [[x, y]]
-                    else:
-                        # キングにチェックがかかっている
-                        li += []
                 else:
                     # 移動先にどちらかの駒がある
-                    li += []
                     break
+        return li
+
+    def enpassantCheck(self, x, y):
+        pre = self.log.get()
+        li = []
+        if not pre:
+            return li
+        dif = abs(pre[2] - pre[4])
+        piece = self.plist[pre[0]].getPiece()
+        if (piece % 6 == B_PAWN) and (dif == 2):
+            if (abs(x - pre[3]) == 1) and (y - pre[4] == 0):
+                x = pre[3]
+                y = (pre[2] + pre[4]) // 2
+                li += [[x, y]]
         return li
 
     def recursionCheck(self, index, x, y, dx, dy, rival):
