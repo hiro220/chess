@@ -27,8 +27,13 @@ class Log:
     def __init__(self):
         self.log = []
 
-    def add(self, i, lx, ly, x, y):
+    def add(self, i, lx, ly, x, y, piece, multi, getted):
         self.log.insert(0, [i, lx, ly, x, y])
+        self.lx, self.ly, self.x, self.y = lx, ly, x, y
+        self.piece = piece
+        self.multi = multi
+        self.getted = getted
+        self.translate()
 
     def get(self):
         if self.log:
@@ -37,6 +42,50 @@ class Log:
     def clear(self):
         self.log.clear()
 
+    def translate(self):
+        """チェスの棋譜に変換する"""
+        self.txt = ""
+        self.writeCasling()
+        self.writePiece()
+        if self.multi:
+            self.writeAddress(self.lx)
+        if self.getted:
+            self.txt += "x"
+        self.writeAddress(self.x)
+        self.writeNumber()
+        self.writeFile()
+
+    def writePiece(self):
+        piece = self.piece % 6
+        if piece == B_ROOK:
+            self.txt += "R"
+        if piece == B_KNIGHT:
+            self.txt += "N"
+        if piece == B_BISHOP:
+            self.txt += "B"
+        if piece == B_QUEEN:
+            self.txt += "Q"
+        if piece == B_KING:
+            self.txt += "K"
+
+    def writeAddress(self, address):
+        print(address)
+        self.txt += chr(address + ord("a"))
+
+    def writeNumber(self):
+        self.txt += chr(7-self.y + ord("1"))
+
+    def writeCasling(self):
+        if (self.piece % 6 == B_KING) and (abs(self.x-self.lx) == 2):
+            if self.x - self.lx > 0:
+                self.txt += "O-O"
+            else:
+                self.txt += "O-O-O"
+
+    def writeFile(self):
+        with open("log.txt", "a") as fp:
+            print(self.txt)
+            fp.write(self.txt+"\n")
 
 class Threefold_Repetition:
     """千日手に対する処理を行うクラス"""
@@ -161,12 +210,15 @@ class Chess_Board:
     def move(self, i, x, y):
         # 実質の駒移動
         x1, y1 = self.getPosition(i)
+        piece = self.plist[i].getPiece()
+        multi = self.multiClist(x, y)
+        getted = not self.board[y][x] == 0
         self.enpassant(i, x, y)
         self._move(i, x, y)
         self.plist[i].move()
-        self.tr.add([i, x, y])
-        self.log.add(i, x1, y1, x, y)
-        if self.plist[i].getPiece() % 6 == B_KING: # i がキング
+        self.tr.add([i, x, y])      # 千日手処理用ログ
+        self.log.add(i, x1, y1, x, y, piece, multi, getted)
+        if piece % 6 == B_KING: # i がキング
             # caslingのときの処理
             if not (-1 <= x-x1 <= 1):
                 if x > x1:
@@ -423,6 +475,13 @@ class Chess_Board:
             if [x, y] in a:
                 return True
         return False
+
+    def multiClist(self, x, y):
+        cnt = 0
+        for c in self.clist:
+            if [x, y] in c:
+                cnt += 1
+        return cnt > 1
 
     def inmList(self, x, y):
         # 指定したマスの駒が動けるか
