@@ -122,6 +122,10 @@ class GraphicalChess(tk.Frame):
     def game(self):
         self.chess.makeList()
         result = self.chess.checkResult()
+        self.chess.log.writeResult(result)
+        self.chess.checkedLog()
+        log = self.chess.log.writeFile("log.txt")
+        self.append_list(log)
         if result == CONTINUNE:
             self.showmPiece()
             self.canvas.bind("<Button-1>", self._selectPiece)
