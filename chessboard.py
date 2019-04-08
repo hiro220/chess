@@ -70,7 +70,6 @@ class Log:
             self.txt += "K"
 
     def writeAddress(self, address):
-        print(address)
         self.txt += chr(address + ord("a"))
 
     def writeNumber(self):
