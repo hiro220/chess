@@ -47,7 +47,6 @@ class Log:
     def translate(self):
         """チェスの棋譜に変換する"""
         self.txt = ""
-        self.writeCasling()
         self.writePiece(self.piece)
         if self.multi:
             self.writeAddress(self.lx)
@@ -55,6 +54,7 @@ class Log:
             self.txt += "x"
         self.writeAddress(self.x)
         self.writeNumber()
+        self.writeCasling()
 
     def writePiece(self, piece):
         piece = piece % 6
@@ -78,9 +78,9 @@ class Log:
     def writeCasling(self):
         if (self.piece % 6 == B_KING) and (abs(self.x-self.lx) == 2):
             if self.x - self.lx > 0:
-                self.txt += "O-O"
+                self.txt = "O-O"
             else:
-                self.txt += "O-O-O"
+                self.txt = "O-O-O"
 
     def writeFile(self, filename):
         with open(filename, "a") as fp:
