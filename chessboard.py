@@ -461,7 +461,7 @@ class Chess_Board:
                     flag = False
                     break
             if flag:
-                li.append([x-3, y])
+                li.append([x-2, y])
         return li
 
     def rivalCheck(self, i, x, y):
